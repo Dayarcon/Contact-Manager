@@ -576,6 +576,9 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
       // Smart reminders for birthdays and anniversaries
       await remindersService.generateRemindersFromContacts([contact]);
       
+      // Scheduled messaging for birthdays and anniversaries
+      await messagingService.generateMessagesFromContacts([contact]);
+      
       // Location tracking
       if (geoService.getCurrentLocation()) {
         await geoService.addGeoContact(contact, geoService.getCurrentLocation()!);

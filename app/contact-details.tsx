@@ -8,6 +8,7 @@ import { Avatar, Button, Card, Chip, Dialog, FAB, IconButton, Portal, Text, Text
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import styled from 'styled-components/native';
 import ContactTimeline from '../components/ContactTimeline';
+import QuickActions from '../components/QuickActions';
 import { useContacts } from '../context/ContactsContext';
 
 const Container = styled.View`
@@ -742,58 +743,11 @@ export default function ContactDetailsScreen() {
         <DetailsSection>
           {/* Quick Actions */}
           <Animated.View entering={FadeInUp.delay(200)}>
-            <SectionCard>
-              <Card.Content>
-                <SectionHeader>Quick Actions</SectionHeader>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }}>
-                  <QuickActionButton
-                    mode="contained"
-                    icon="phone"
-                    onPress={handleCall}
-                    disabled={!primaryPhone}
-                    style={{ backgroundColor: theme.colors.primary }}
-                  >
-                    Call
-                  </QuickActionButton>
-                  <QuickActionButton
-                    mode="contained"
-                    icon="message"
-                    onPress={handleMessage}
-                    disabled={!primaryPhone}
-                    style={{ backgroundColor: theme.colors.secondary }}
-                  >
-                    SMS
-                  </QuickActionButton>
-                  <QuickActionButton
-                    mode="contained"
-                    icon="chat"
-                    onPress={handleWhatsApp}
-                    disabled={!primaryPhone}
-                    style={{ backgroundColor: '#25D366' }}
-                  >
-                    WhatsApp
-                  </QuickActionButton>
-                  <QuickActionButton
-                    mode="contained"
-                    icon="video"
-                    onPress={handleVideoCall}
-                    disabled={!primaryPhone}
-                    style={{ backgroundColor: '#ff6b35' }}
-                  >
-                    Video
-                  </QuickActionButton>
-                  <QuickActionButton
-                    mode="contained"
-                    icon="email"
-                    onPress={handleEmail}
-                    disabled={!primaryEmail}
-                    style={{ backgroundColor: theme.colors.tertiary }}
-                  >
-                    Email
-                  </QuickActionButton>
-                </View>
-              </Card.Content>
-            </SectionCard>
+            <QuickActions 
+              contact={contact}
+              showLabels={true}
+              maxActions={5}
+            />
           </Animated.View>
 
           {/* Contact Information */}

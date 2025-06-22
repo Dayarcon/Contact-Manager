@@ -15,7 +15,10 @@
         "NSLocationWhenInUseUsageDescription": "This app uses location to provide nearby contact suggestions and location-based features.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "This app uses location to provide nearby contact suggestions and location-based features.",
         "NSLocationAlwaysUsageDescription": "This app uses location to provide nearby contact suggestions and location-based features.",
-        "UIBackgroundModes": ["location"]
+        "UIBackgroundModes": [
+          "location",
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -27,7 +30,11 @@
       "package": "com.anonymous.contactmanagerapp",
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "POST_NOTIFICATIONS",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED",
+        "SCHEDULE_EXACT_ALARM"
       ]
     },
     "web": {
@@ -54,6 +61,14 @@
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#ffffff",
+          "sounds": ["./assets/sounds/notification.wav"]
         }
       ]
     ],

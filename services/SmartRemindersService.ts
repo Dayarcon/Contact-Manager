@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Contact } from '../context/ContactsContext';
+import NotificationService from './NotificationService';
 
 export interface Reminder {
   id: string;
@@ -12,6 +13,7 @@ export interface Reminder {
   isEnabled: boolean;
   createdAt: string;
   updatedAt: string;
+  notificationId?: string; // Link to scheduled notification
 }
 
 export interface ReminderSettings {
@@ -35,8 +37,10 @@ class SmartRemindersService {
 
   private readonly REMINDERS_STORAGE_KEY = 'smart_reminders';
   private readonly SETTINGS_STORAGE_KEY = 'reminder_settings';
+  private notificationService: NotificationService;
 
   private constructor() {
+    this.notificationService = NotificationService.getInstance();
     this.loadData();
   }
 
@@ -173,6 +177,19 @@ class SmartRemindersService {
 
   async addReminder(reminder: Reminder): Promise<boolean> {
     try {
+      // Check if reminder already exists
+      if (this.reminders.has(reminder.id)) {
+        return true; // Already exists
+      }
+
+      // Schedule notification if reminder is enabled
+      if (reminder.isEnabled) {
+        const notificationId = await this.scheduleReminderNotification(reminder);
+        if (notificationId) {
+          reminder.notificationId = notificationId;
+        }
+      }
+
       this.reminders.set(reminder.id, reminder);
       await this.saveData();
       return true;
@@ -184,6 +201,11 @@ class SmartRemindersService {
 
   async removeReminder(reminderId: string): Promise<boolean> {
     try {
+      const reminder = this.reminders.get(reminderId);
+      if (reminder && reminder.notificationId) {
+        await this.notificationService.cancelNotification(reminder.notificationId);
+      }
+      
       this.reminders.delete(reminderId);
       await this.saveData();
       return true;
@@ -196,6 +218,58 @@ class SmartRemindersService {
   async updateReminderSettings(settings: Partial<ReminderSettings>): Promise<void> {
     this.settings = { ...this.settings, ...settings };
     await this.saveData();
+    
+    // Regenerate reminders with new settings
+    // This would typically be called when settings change
+  }
+
+  async toggleReminder(reminderId: string, enabled: boolean): Promise<boolean> {
+    try {
+      const reminder = this.reminders.get(reminderId);
+      if (!reminder) return false;
+
+      reminder.isEnabled = enabled;
+      reminder.updatedAt = new Date().toISOString();
+
+      if (enabled && !reminder.notificationId) {
+        // Schedule notification
+        const notificationId = await this.scheduleReminderNotification(reminder);
+        if (notificationId) {
+          reminder.notificationId = notificationId;
+        }
+      } else if (!enabled && reminder.notificationId) {
+        // Cancel notification
+        await this.notificationService.cancelNotification(reminder.notificationId);
+        reminder.notificationId = undefined;
+      }
+
+      await this.saveData();
+      return true;
+    } catch (error) {
+      console.error('Error toggling reminder:', error);
+      return false;
+    }
+  }
+
+  async cancelContactReminders(contactId: string): Promise<boolean> {
+    try {
+      const contactReminders = Array.from(this.reminders.values()).filter(
+        reminder => reminder.contactId === contactId
+      );
+
+      for (const reminder of contactReminders) {
+        if (reminder.notificationId) {
+          await this.notificationService.cancelNotification(reminder.notificationId);
+        }
+        this.reminders.delete(reminder.id);
+      }
+
+      await this.saveData();
+      return true;
+    } catch (error) {
+      console.error('Error canceling contact reminders:', error);
+      return false;
+    }
   }
 
   getReminders(): Reminder[] {
@@ -222,6 +296,50 @@ class SmartRemindersService {
     // For now, just log the message
     console.log(`Auto message for ${reminder.contactName}: ${reminder.message}`);
     return true;
+  }
+
+  // Schedule notification for a reminder
+  private async scheduleReminderNotification(reminder: Reminder): Promise<string | null> {
+    try {
+      const reminderDate = new Date(reminder.date);
+      
+      if (reminder.type === 'birthday') {
+        const birthday = new Date(reminder.contactId.split('_')[1]); // Extract birthday from contact
+        return await this.notificationService.scheduleBirthdayReminder(
+          reminder.contactName,
+          reminder.contactId,
+          birthday,
+          this.settings.reminderDaysInAdvance
+        );
+      } else if (reminder.type === 'anniversary') {
+        const anniversary = new Date(reminder.contactId.split('_')[1]); // Extract anniversary from contact
+        return await this.notificationService.scheduleAnniversaryReminder(
+          reminder.contactName,
+          reminder.contactId,
+          anniversary,
+          this.settings.reminderDaysInAdvance
+        );
+      } else {
+        // Custom reminder
+        return await this.notificationService.scheduleNotification({
+          id: reminder.id,
+          title: reminder.title,
+          body: reminder.message,
+          type: 'reminder',
+          contactId: reminder.contactId,
+          contactName: reminder.contactName,
+          scheduledDate: reminderDate,
+          data: {
+            type: reminder.type,
+            contactId: reminder.contactId,
+            contactName: reminder.contactName
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error scheduling reminder notification:', error);
+      return null;
+    }
   }
 }
 

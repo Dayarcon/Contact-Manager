@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 
 import { ContactsProvider } from '../context/ContactsContext';
 import GeoLocationService from '../services/GeoLocationService';
+import NotificationService from '../services/NotificationService';
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -15,17 +16,22 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    // Initialize location service when app starts
-    const initializeLocationService = async () => {
+    // Initialize services when app starts
+    const initializeServices = async () => {
       try {
+        // Initialize location service
         const geoLocationService = GeoLocationService.getInstance();
         await geoLocationService.initialize();
+
+        // Initialize notification service
+        const notificationService = NotificationService.getInstance();
+        console.log('Services initialized successfully');
       } catch (error) {
-        console.error('Error initializing location service:', error);
+        console.error('Error initializing services:', error);
       }
     };
 
-    initializeLocationService();
+    initializeServices();
 
     // Cleanup on unmount
     return () => {

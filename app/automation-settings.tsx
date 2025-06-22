@@ -172,7 +172,9 @@ export default function AutomationSettingsScreen() {
     enableAutoAnniversaryMessages: true,
     defaultMessageTime: "09:00",
     customBirthdayMessage: 'Happy Birthday {name}! 🎉',
-    customAnniversaryMessage: 'Happy Anniversary {name}! 💍'
+    customAnniversaryMessage: 'Happy Anniversary {name}! 💍',
+    preferredPlatform: 'whatsapp',
+    enableNotifications: true
   });
 
   const [geoSettings, setGeoSettings] = useState<GeoLocationSettings>({
@@ -219,7 +221,7 @@ export default function AutomationSettingsScreen() {
   const loadStats = async () => {
     try {
       const reminders = remindersService.getReminders();
-      const scheduledMessages = messagingService.getScheduledMessages();
+      const scheduledMessages = messagingService.getPendingMessages();
       const upcomingReminders = remindersService.getUpcomingReminders();
       const upcomingMessages = messagingService.getPendingMessages();
       const geoContacts = geoService.getGeoContacts();
