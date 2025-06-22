@@ -1,10 +1,12 @@
 import * as Clipboard from 'expo-clipboard';
+import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import React, { useEffect, useState } from 'react';
 import { Alert, Dimensions, Image, Linking, Modal, ScrollView, View, useWindowDimensions } from 'react-native';
-import { Avatar, Button, Card, Chip, Dialog, FAB, IconButton, Portal, Text, TextInput, useTheme } from 'react-native-paper';
+import { Avatar, Button, Card, Chip, Dialog, FAB, IconButton, Menu, Portal, Text, TextInput, useTheme } from 'react-native-paper';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import styled from 'styled-components/native';
 import ContactTimeline from '../components/ContactTimeline';
@@ -271,6 +273,9 @@ export default function ContactDetailsScreen() {
   // State for editing notes
   const [notesDialogVisible, setNotesDialogVisible] = useState(false);
   const [notesDraft, setNotesDraft] = useState(contact?.notes || '');
+
+  // Menu state
+  const [menuVisible, setMenuVisible] = useState(false);
 
   // Favorite badge animation state
   const [favScale, setFavScale] = useState(1);
@@ -553,6 +558,215 @@ export default function ContactDetailsScreen() {
     }
   };
 
+  // Contact sharing functionality
+  const generateContactText = () => {
+    if (!contact) return '';
+    
+    let contactText = `${contact.name}\n`;
+    
+    if (contact.company) {
+      contactText += `Company: ${contact.company}\n`;
+    }
+    
+    if (contact.jobTitle) {
+      contactText += `Job Title: ${contact.jobTitle}\n`;
+    }
+    
+    if (contact.phoneNumbers && contact.phoneNumbers.length > 0) {
+      contactText += '\nPhone Numbers:\n';
+      contact.phoneNumbers.forEach(phone => {
+        contactText += `• ${phone.type}: ${phone.number}${phone.isPrimary ? ' (Primary)' : ''}\n`;
+      });
+    }
+    
+    if (contact.emailAddresses && contact.emailAddresses.length > 0) {
+      contactText += '\nEmail Addresses:\n';
+      contact.emailAddresses.forEach(email => {
+        contactText += `• ${email.type}: ${email.email}${email.isPrimary ? ' (Primary)' : ''}\n`;
+      });
+    }
+    
+    if (contact.address) {
+      contactText += `\nAddress: ${contact.address}\n`;
+    }
+    
+    if (contact.website) {
+      contactText += `Website: ${contact.website}\n`;
+    }
+    
+    if (contact.socialMedia) {
+      contactText += `Social Media: ${contact.socialMedia}\n`;
+    }
+    
+    if (contact.birthday) {
+      contactText += `Birthday: ${contact.birthday}\n`;
+    }
+    
+    if (contact.anniversary) {
+      contactText += `Anniversary: ${contact.anniversary}\n`;
+    }
+    
+    if (contact.notes) {
+      contactText += `\nNotes: ${contact.notes}\n`;
+    }
+    
+    if (contact.group) {
+      contactText += `Group: ${contact.group}\n`;
+    }
+    
+    if (contact.labels && contact.labels.length > 0) {
+      contactText += `Labels: ${contact.labels.join(', ')}\n`;
+    }
+    
+    return contactText;
+  };
+
+  const generateVCard = () => {
+    if (!contact) return '';
+    
+    let vcard = 'BEGIN:VCARD\n';
+    vcard += 'VERSION:3.0\n';
+    vcard += `FN:${contact.name}\n`;
+    
+    if (contact.company) {
+      vcard += `ORG:${contact.company}\n`;
+    }
+    
+    if (contact.jobTitle) {
+      vcard += `TITLE:${contact.jobTitle}\n`;
+    }
+    
+    if (contact.phoneNumbers && contact.phoneNumbers.length > 0) {
+      contact.phoneNumbers.forEach(phone => {
+        vcard += `TEL;TYPE=${phone.type.toUpperCase()}:${phone.number}\n`;
+      });
+    }
+    
+    if (contact.emailAddresses && contact.emailAddresses.length > 0) {
+      contact.emailAddresses.forEach(email => {
+        vcard += `EMAIL;TYPE=${email.type.toUpperCase()}:${email.email}\n`;
+      });
+    }
+    
+    if (contact.address) {
+      vcard += `ADR:;;${contact.address};;;;\n`;
+    }
+    
+    if (contact.website) {
+      vcard += `URL:${contact.website}\n`;
+    }
+    
+    if (contact.notes) {
+      vcard += `NOTE:${contact.notes}\n`;
+    }
+    
+    vcard += 'END:VCARD';
+    return vcard;
+  };
+
+  const handleShareContact = async (format: 'text' | 'vcard') => {
+    if (!contact) return;
+    
+    try {
+      let content = '';
+      
+      if (format === 'text') {
+        content = generateContactText();
+      } else {
+        content = generateVCard();
+      }
+      
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        // Create a temporary file for sharing
+        const fileUri = `${FileSystem.documentDirectory}${contact.name.replace(/\s+/g, '_')}_contact.${format === 'vcard' ? 'vcf' : 'txt'}`;
+        await FileSystem.writeAsStringAsync(fileUri, content, {
+          encoding: FileSystem.EncodingType.UTF8
+        });
+        
+        // Directly open system share sheet
+        await Sharing.shareAsync(fileUri, {
+          mimeType: format === 'vcard' ? 'text/vcard' : 'text/plain',
+          dialogTitle: `Share ${contact.name}'s contact information`
+        });
+        
+        // Clean up the temporary file after sharing
+        setTimeout(async () => {
+          try {
+            await FileSystem.deleteAsync(fileUri);
+          } catch (error) {
+            console.log('Error cleaning up temporary file:', error);
+          }
+        }, 1000);
+        
+      } else {
+        // Fallback: copy to clipboard
+        await Clipboard.setStringAsync(content);
+        Alert.alert(
+          'Contact Information Copied',
+          `Contact information has been copied to clipboard in ${format.toUpperCase()} format.`,
+          [{ text: 'OK' }]
+        );
+      }
+      
+      // Add to history
+      addHistoryEvent?.(contact.id, { 
+        type: 'share', 
+        detail: `Shared contact as ${format.toUpperCase()}`, 
+        date: new Date().toISOString() 
+      });
+      
+    } catch (error) {
+      console.error('Error sharing contact:', error);
+      // Fallback to clipboard if sharing fails
+      try {
+        const content = format === 'text' ? generateContactText() : generateVCard();
+        await Clipboard.setStringAsync(content);
+        Alert.alert(
+          'Sharing Failed - Copied to Clipboard',
+          `Unable to share directly, but contact information has been copied to clipboard in ${format.toUpperCase()} format.`,
+          [{ text: 'OK' }]
+        );
+      } catch (clipboardError) {
+        Alert.alert(
+          'Sharing Failed',
+          'Unable to share contact information. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
+    }
+  };
+
+  const handleCopyContactInfo = async () => {
+    if (!contact) return;
+    
+    try {
+      const contactText = generateContactText();
+      await Clipboard.setStringAsync(contactText);
+      
+      Alert.alert(
+        'Contact Information Copied',
+        'Contact information has been copied to clipboard.',
+        [{ text: 'OK' }]
+      );
+      
+      // Add to history
+      addHistoryEvent?.(contact.id, { 
+        type: 'copy', 
+        detail: 'Copied contact information', 
+        date: new Date().toISOString() 
+      });
+      
+    } catch (error) {
+      console.error('Error copying contact:', error);
+      Alert.alert(
+        'Copy Failed',
+        'Unable to copy contact information. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
   if (isLoading) {
     return (
       <Container style={{ backgroundColor: theme.colors.background }}>
@@ -720,11 +934,85 @@ export default function ContactDetailsScreen() {
         </Text>
         <IconButton 
           icon="dots-vertical" 
-          onPress={() => {}} 
+          onPress={() => setMenuVisible(true)} 
           accessibilityLabel="More options"
           iconColor="#1a1a1a"
         />
       </View>
+
+      {/* Contact Sharing Menu */}
+      <Menu
+        visible={menuVisible}
+        onDismiss={() => setMenuVisible(false)}
+        anchor={{ x: width - 50, y: 80 }}
+        contentStyle={{ borderRadius: 12 }}
+      >
+        <Menu.Item
+          leadingIcon="share-variant"
+          onPress={() => {
+            setMenuVisible(false);
+            handleShareContact('text');
+          }}
+          title="Share as Text"
+        />
+        <Menu.Item
+          leadingIcon="card-account-phone"
+          onPress={() => {
+            setMenuVisible(false);
+            handleShareContact('vcard');
+          }}
+          title="Share as vCard"
+        />
+        <Menu.Item
+          leadingIcon="content-copy"
+          onPress={() => {
+            setMenuVisible(false);
+            handleCopyContactInfo();
+          }}
+          title="Copy Contact Info"
+        />
+        <View style={{ height: 1, backgroundColor: '#e0e0e0', marginHorizontal: 16 }} />
+        <Menu.Item
+          leadingIcon="star"
+          onPress={() => {
+            setMenuVisible(false);
+            toggleFavorite(contact.id);
+          }}
+          title={contact.isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+        />
+        <Menu.Item
+          leadingIcon="pencil"
+          onPress={() => {
+            setMenuVisible(false);
+            router.push({ pathname: '/(tabs)/edit-contact', params: { id: contact.id } });
+          }}
+          title="Edit Contact"
+        />
+        <View style={{ height: 1, backgroundColor: '#e0e0e0', marginHorizontal: 16 }} />
+        <Menu.Item
+          leadingIcon="delete"
+          onPress={() => {
+            setMenuVisible(false);
+            Alert.alert(
+              'Delete Contact',
+              `Are you sure you want to delete ${contact.name}?`,
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { 
+                  text: 'Delete', 
+                  style: 'destructive',
+                  onPress: () => {
+                    deleteContact(contact.id);
+                    router.back();
+                  }
+                }
+              ]
+            );
+          }}
+          title="Delete Contact"
+          titleStyle={{ color: '#ff6b6b' }}
+        />
+      </Menu>
 
       <GradientBackground
         colors={[theme.colors.primaryContainer, theme.colors.background]}

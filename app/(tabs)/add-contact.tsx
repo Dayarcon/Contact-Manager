@@ -57,8 +57,6 @@ const ItemRow = styled.View`
   padding: 16px;
   background-color: #f8f9fa;
   border-radius: 16px;
-  border-left-width: 3px;
-  border-left-color: #007AFF;
 `;
 
 const AddButton = styled(Button)`
