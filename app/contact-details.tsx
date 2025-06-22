@@ -742,11 +742,19 @@ export default function ContactDetailsScreen() {
 
         <DetailsSection>
           {/* Quick Actions */}
-          <Animated.View entering={FadeInUp.delay(200)}>
+          <Animated.View entering={FadeInUp.delay(200)} style={{ marginBottom: 30 }}>
             <QuickActions 
               contact={contact}
-              showLabels={true}
-              maxActions={5}
+              showUnavailable={true}
+              maxActions={6}
+              onActionExecuted={() => {
+                // Add a history event when a quick action is executed
+                addHistoryEvent?.(contact.id, { 
+                  type: 'quick_action', 
+                  detail: 'Used quick action', 
+                  date: new Date().toISOString() 
+                });
+              }}
             />
           </Animated.View>
 

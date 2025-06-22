@@ -2,11 +2,13 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
+import { Alert, Dimensions, ScrollView, View } from 'react-native';
 import { Button, Card, Chip, IconButton, Snackbar, Switch, Text, TextInput, useTheme } from 'react-native-paper';
 import Animated, { FadeInUp, SlideInRight } from 'react-native-reanimated';
 import styled from 'styled-components/native';
 import { EmailAddress, PhoneNumber, useContacts } from '../../context/ContactsContext';
+
+const { width } = Dimensions.get('window');
 
 const Container = styled.View`
   flex: 1;
@@ -18,279 +20,212 @@ const HeaderGradient = styled(LinearGradient)`
   top: 0;
   left: 0;
   right: 0;
-  height: 200px;
+  height: 120px;
   z-index: -1;
 `;
 
 const FormScroll = styled(ScrollView)`
   flex: 1;
-  padding: 20px;
+  padding: 16px;
 `;
 
 const SectionCard = styled(Card)`
-  margin-bottom: 20px;
-  border-radius: 24px;
-  elevation: 6;
-  shadow-color: #000;
-  shadow-opacity: 0.1;
-  shadow-radius: 16px;
+  margin-bottom: 16px;
+  border-radius: 20px;
   background-color: white;
   border: 1px solid rgba(0, 0, 0, 0.05);
 `;
 
 const SectionHeader = styled(Text)`
-  font-size: 24px;
-  font-weight: 800;
-  margin-bottom: 24px;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 20px;
   color: #1a1a1a;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 `;
 
 const StyledTextInput = styled(TextInput)`
-  margin-bottom: 20px;
-  background-color: white;
-  border-radius: 16px;
-  elevation: 2;
-  shadow-color: #000;
-  shadow-opacity: 0.05;
-  shadow-radius: 8px;
+  margin-bottom: 16px;
+  background-color: #fafafa;
+  border-radius: 12px;
 `;
 
 const ItemRow = styled.View`
   flex-direction: row;
   align-items: flex-start;
-  margin-bottom: 20px;
-  padding: 24px;
+  margin-bottom: 16px;
+  padding: 16px;
   background-color: #f8f9fa;
-  border-radius: 20px;
-  border-left-width: 4px;
-  border-left-color: #6200ee;
-  elevation: 3;
-  shadow-color: #000;
-  shadow-opacity: 0.08;
-  shadow-radius: 12px;
+  border-radius: 16px;
+  border-left-width: 3px;
+  border-left-color: #007AFF;
 `;
 
 const AddButton = styled(Button)`
-  margin-top: 20px;
-  border-radius: 16px;
+  margin-top: 16px;
+  border-radius: 12px;
   background-color: #f0f0f0;
-  elevation: 3;
-  shadow-color: #000;
-  shadow-opacity: 0.1;
-  shadow-radius: 8px;
 `;
 
 const SwitchRow = styled.View`
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 0;
+  padding: 16px 0;
+  border-bottom-width: 1px;
+  border-bottom-color: #f0f0f0;
 `;
 
 const SwitchLabel = styled(Text)`
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: #1a1a1a;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.2px;
 `;
 
 const ChipContainer = styled.View`
   flex-direction: row;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 20px;
+  gap: 10px;
+  margin-top: 16px;
 `;
 
 const StyledChip = styled(Chip)`
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   background-color: #f0f0f0;
-  border-radius: 24px;
-  elevation: 2;
-  shadow-color: #000;
-  shadow-opacity: 0.05;
-  shadow-radius: 6px;
+  border-radius: 20px;
 `;
 
 const SelectedChip = styled(Chip)`
-  margin-bottom: 12px;
-  background-color: #6200ee;
-  border-radius: 24px;
-  elevation: 3;
-  shadow-color: #000;
-  shadow-opacity: 0.1;
-  shadow-radius: 8px;
+  margin-bottom: 8px;
+  background-color: #007AFF;
+  border-radius: 20px;
 `;
-
-const ProgressIndicator = styled.View`
-  flex-direction: row;
-  justify-content: center;
-  margin-bottom: 32px;
-  padding: 20px;
-`;
-
-const ProgressDot = styled.View<{ active: boolean }>`
-  width: 12px;
-  height: 12px;
-  border-radius: 6px;
-  margin: 0 8px;
-  background-color: ${(props: { active: boolean }) => props.active ? '#6200ee' : '#e0e0e0'};
-  elevation: ${(props: { active: boolean }) => props.active ? 3 : 0};
-  shadow-color: #000;
-  shadow-opacity: ${(props: { active: boolean }) => props.active ? 0.1 : 0};
-  shadow-radius: ${(props: { active: boolean }) => props.active ? 4 : 0};
-`;
-
-const AnimatedCard = Animated.createAnimatedComponent(SectionCard);
 
 const PhotoSection = styled.View`
   align-items: center;
-  margin-bottom: 32px;
-  padding: 24px;
+  margin-bottom: 24px;
+  padding: 20px;
 `;
 
 const AvatarContainer = styled.View`
   position: relative;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 `;
 
 const ContactAvatar = styled.View`
-  width: 120px;
-  height: 120px;
-  border-radius: 60px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50px;
   background-color: #f0f0f0;
   align-items: center;
   justify-content: center;
-  elevation: 6;
-  shadow-color: #000;
-  shadow-opacity: 0.15;
-  shadow-radius: 12px;
-  border-width: 3px;
-  border-color: #6200ee;
+  border-width: 2px;
+  border-color: #007AFF;
 `;
 
 const AvatarImage = styled.Image`
-  width: 120px;
-  height: 120px;
-  border-radius: 60px;
-  border-width: 3px;
-  border-color: #6200ee;
+  width: 100px;
+  height: 100px;
+  border-radius: 50px;
+  border-width: 2px;
+  border-color: #007AFF;
 `;
 
 const AvatarText = styled(Text)`
-  font-size: 48px;
+  font-size: 36px;
   font-weight: 700;
-  color: #6200ee;
+  color: #007AFF;
 `;
 
 const PhotoActions = styled.View`
   flex-direction: row;
-  gap: 16px;
+  gap: 12px;
 `;
 
 const PhotoButton = styled(Button)`
-  border-radius: 24px;
-  elevation: 3;
-  shadow-color: #000;
-  shadow-opacity: 0.1;
-  shadow-radius: 8px;
+  border-radius: 20px;
 `;
+
+const ProgressCard = styled.View`
+  background-color: white;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+`;
+
+const ProgressBar = styled.View`
+  height: 8px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 12px;
+`;
+
+const ProgressFill = styled.View<{ width: number; color: string }>`
+  height: 100%;
+  background-color: ${(props: { width: number; color: string }) => props.color};
+  width: ${(props: { width: number; color: string }) => props.width}%;
+  border-radius: 4px;
+`;
+
+const FloatingSaveButton = styled.View`
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  left: 20px;
+`;
+
+const AnimatedCard = Animated.createAnimatedComponent(SectionCard);
 
 export default function AddContactScreen() {
   const router = useRouter();
+  const theme = useTheme();
+  const { addContact, isLoading } = useContacts() || { addContact: () => console.warn('Context not available'), isLoading: false };
   
-  // Try to access theme with error handling
-  let theme;
-  try {
-    theme = useTheme();
-  } catch (error) {
-    console.error('Error accessing theme:', error);
-    // Fallback theme object
-    theme = {
-      colors: {
-        primary: '#6200ee',
-        primaryContainer: '#e8def8',
-        secondary: '#03dac6',
-        secondaryContainer: '#ccdbfc',
-        tertiary: '#018786',
-        tertiaryContainer: '#b8e5d8',
-        error: '#b00020',
-        errorContainer: '#f9dedc',
-        background: '#ffffff',
-        surface: '#ffffff',
-        surfaceVariant: '#f5f5f5',
-        onSurface: '#000000',
-        onSurfaceVariant: '#666666',
-        outline: '#c1c1c1',
-        outlineVariant: '#e0e0e0'
-      }
-    };
-  }
-
-  // Try to access context with error handling
-  let context;
-  try {
-    context = useContacts();
-  } catch (error) {
-    console.error('Error accessing contacts context:', error);
-    context = {
-      contacts: [],
-      isLoading: true,
-      addContact: () => console.warn('Context not available'),
-      editContact: () => console.warn('Context not available'),
-      deleteContact: () => console.warn('Context not available'),
-      toggleFavorite: () => console.warn('Context not available'),
-      importContacts: () => console.warn('Context not available'),
-      setContacts: () => console.warn('Context not available'),
-      addHistoryEvent: () => console.warn('Context not available'),
-      mergeContacts: () => console.warn('Context not available'),
-      findDuplicates: () => [],
-      getContactStats: () => ({ total: 0, favorites: 0, groups: {}, recent: 0 }),
-      searchContacts: () => [],
-      getContactsByGroup: () => [],
-      getFavoriteContacts: () => [],
-      getRecentContacts: () => []
-    };
-  }
-
-  const { addContact, isLoading } = context || {
-    addContact: () => console.warn('Context not available'),
-    isLoading: true
-  };
-
-  // Basic Info
+  // Basic Information
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [company, setCompany] = useState('');
   const [jobTitle, setJobTitle] = useState('');
-  const [website, setWebsite] = useState('');
   const [contactPhoto, setContactPhoto] = useState<string | null>(null);
-
-  // Phone Numbers
+  
+  // Contact Information
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([
     { id: '1', number: '', type: 'mobile', isPrimary: true }
   ]);
-
-  // Email Addresses
   const [emailAddresses, setEmailAddresses] = useState<EmailAddress[]>([
     { id: '1', email: '', type: 'personal', isPrimary: true }
   ]);
-
-  // Additional Info
+  
+  // Additional Information
   const [businessType, setBusinessType] = useState('');
   const [address, setAddress] = useState('');
   const [socialMedia, setSocialMedia] = useState('');
+  const [website, setWebsite] = useState('');
   const [birthday, setBirthday] = useState('');
   const [anniversary, setAnniversary] = useState('');
+  const [notes, setNotes] = useState('');
+  
+  // Organization
   const [group, setGroup] = useState('');
   const [labels, setLabels] = useState<string[]>([]);
+  
+  // Settings
   const [isEmergencyContact, setIsEmergencyContact] = useState(false);
   const [emergencyContact, setEmergencyContact] = useState('');
-  const [notes, setNotes] = useState('');
+  
+  // UI State
   const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
+  const [isSaving, setIsSaving] = useState(false);
 
-  const commonGroups = ["Family", "Work", "Client", "Friends", "Emergency"];
-  const commonLabels = ["Developer", "Tech", "Legal", "Medical", "Finance", "Education", "Emergency", "VIP"];
+  const commonGroups = ['Family', 'Work', 'Friends', 'Client', 'Vendor', 'Emergency'];
+  const commonLabels = ['VIP', 'Important', 'Client', 'Family', 'Friend', 'Work', 'Emergency', 'Favorite'];
+
+  // Check if form has required fields
+  const hasRequiredFields = firstName.trim() || lastName.trim();
+  const canSave = hasRequiredFields && !isSaving;
 
   const addPhoneNumber = () => {
     const newId = Date.now().toString();
@@ -416,43 +351,58 @@ export default function AddContactScreen() {
     );
   };
 
-  const handleAddContact = () => {
-    if (!firstName.trim() && !lastName.trim()) {
+  const handleAddContact = async () => {
+    if (!hasRequiredFields) {
       setSnackbar({ visible: true, message: 'Please enter at least a first name or last name' });
       return;
     }
 
-    const name = `${firstName.trim()} ${lastName.trim()}`.trim();
-    
-    addContact({
-      name,
-      firstName: firstName.trim() || undefined,
-      lastName: lastName.trim() || undefined,
-      company: company.trim() || undefined,
-      jobTitle: jobTitle.trim() || undefined,
-      phoneNumbers,
-      emailAddresses,
-      businessType,
-      address,
-      socialMedia,
-      website: website.trim() || undefined,
-      birthday: birthday.trim() || undefined,
-      anniversary: anniversary.trim() || undefined,
-      group,
-      labels: labels.length > 0 ? labels : undefined,
-      isEmergencyContact,
-      emergencyContact: emergencyContact.trim() || undefined,
-      notes,
-      imageUri: contactPhoto || undefined
-    });
+    setIsSaving(true);
 
-    router.back();
+    try {
+      const name = `${firstName.trim()} ${lastName.trim()}`.trim();
+      
+      addContact({
+        name,
+        firstName: firstName.trim() || undefined,
+        lastName: lastName.trim() || undefined,
+        company: company.trim() || undefined,
+        jobTitle: jobTitle.trim() || undefined,
+        phoneNumbers,
+        emailAddresses,
+        businessType,
+        address,
+        socialMedia,
+        website: website.trim() || undefined,
+        birthday: birthday.trim() || undefined,
+        anniversary: anniversary.trim() || undefined,
+        group,
+        labels: labels.length > 0 ? labels : undefined,
+        isEmergencyContact,
+        emergencyContact: emergencyContact.trim() || undefined,
+        notes,
+        imageUri: contactPhoto || undefined
+      });
+
+      setSnackbar({ visible: true, message: 'Contact saved successfully! 🎉' });
+      
+      // Wait a moment to show success message before navigating back
+      setTimeout(() => {
+        router.back();
+      }, 1500);
+      
+    } catch (error) {
+      console.error('Error adding contact:', error);
+      setSnackbar({ visible: true, message: 'Failed to save contact. Please try again.' });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
     <Container>
       <HeaderGradient
-        colors={['#6200ee', '#7c4dff', '#9c27b0']}
+        colors={['#007AFF', '#5AC8FA', '#34C759']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
@@ -460,46 +410,69 @@ export default function AddContactScreen() {
       <View style={{ 
         flexDirection: 'row', 
         alignItems: 'center', 
-        paddingTop: 60, 
+        paddingTop: 50, 
         paddingHorizontal: 16, 
-        paddingBottom: 20,
+        paddingBottom: 16,
         backgroundColor: 'transparent'
       }}>
         <IconButton
           icon="arrow-left"
           iconColor="black"
-          size={28}
+          size={24}
           onPress={() => router.back()}
           style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
         />
         <Text style={{ 
           flex: 1, 
           color: 'black', 
-          fontSize: 24, 
-          fontWeight: '800', 
-          marginLeft: 16,
-          letterSpacing: 0.5
+          fontSize: 20, 
+          fontWeight: '700', 
+          marginLeft: 12,
+          letterSpacing: 0.3
         }}>
           Add New Contact
         </Text>
         <IconButton
-          icon="check"
-          iconColor="white"
-          size={28}
+          icon={isSaving ? "loading" : "check"}
+          iconColor="black"
+          size={24}
           onPress={handleAddContact}
-          disabled={isLoading}
+          disabled={!canSave || isSaving}
           style={{ 
-            backgroundColor: 'rgba(255, 255, 255, 0.2)',
-            opacity: isLoading ? 0.5 : 1
+            backgroundColor: canSave ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)',
+            opacity: canSave ? 1 : 0.5
           }}
         />
       </View>
 
       
       <FormScroll showsVerticalScrollIndicator={false}>
+        {/* Progress Indicator */}
+        <Animated.View entering={FadeInUp.delay(25).springify()}>
+          <ProgressCard>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#333' }}>
+                Form Progress
+              </Text>
+              <Text style={{ fontSize: 14, color: '#666' }}>
+                {Math.round((hasRequiredFields ? 1 : 0) * 100)}% Complete
+              </Text>
+            </View>
+            <ProgressBar>
+              <ProgressFill 
+                width={(hasRequiredFields ? 1 : 0) * 100} 
+                color={hasRequiredFields ? '#4CAF50' : '#ccc'} 
+              />
+            </ProgressBar>
+            <Text style={{ fontSize: 12, color: '#666', marginTop: 8 }}>
+              {hasRequiredFields ? 'Ready to save!' : 'Add at least a first or last name'}
+            </Text>
+          </ProgressCard>
+        </Animated.View>
+
         <Animated.View entering={FadeInUp.delay(50).springify()}>
           <SectionCard>
-            <Card.Content style={{ padding: 24 }}>
+            <Card.Content style={{ padding: 20 }}>
               <PhotoSection>
                 <AvatarContainer>
                   {contactPhoto ? (
@@ -511,14 +484,13 @@ export default function AddContactScreen() {
                   )}
                   <IconButton
                     icon="camera"
-                    size={24}
+                    size={20}
                     iconColor="white"
                     style={{
                       position: 'absolute',
                       bottom: 0,
                       right: 0,
-                      backgroundColor: '#6200ee',
-                      elevation: 4,
+                      backgroundColor: '#007AFF',
                     }}
                     onPress={takePhoto}
                   />
@@ -529,8 +501,8 @@ export default function AddContactScreen() {
                     mode="outlined"
                     onPress={pickImage}
                     icon="image"
-                    style={{ borderColor: '#6200ee' }}
-                    labelStyle={{ color: '#6200ee' }}
+                    style={{ borderColor: '#007AFF' }}
+                    labelStyle={{ color: '#007AFF' }}
                   >
                     Choose Photo
                   </PhotoButton>
@@ -554,30 +526,50 @@ export default function AddContactScreen() {
 
         <Animated.View entering={FadeInUp.delay(100).springify()}>
           <SectionCard>
-            <Card.Content style={{ padding: 24 }}>
+            <Card.Content style={{ padding: 20 }}>
               <SectionHeader>👤 Basic Information</SectionHeader>
               
               <View style={{ flexDirection: 'row', gap: 12 }}>
-                <StyledTextInput
-                  label="First Name"
-                  value={firstName}
-                  onChangeText={setFirstName}
-                  mode="outlined"
-                  style={{ flex: 1 }}
-                  left={<TextInput.Icon icon="account" />}
-                  outlineColor="#e0e0e0"
-                  activeOutlineColor="#6200ee"
-                />
-                <StyledTextInput
-                  label="Last Name"
-                  value={lastName}
-                  onChangeText={setLastName}
-                  mode="outlined"
-                  style={{ flex: 1 }}
-                  left={<TextInput.Icon icon="account" />}
-                  outlineColor="#e0e0e0"
-                  activeOutlineColor="#6200ee"
-                />
+                <View style={{ flex: 1 }}>
+                  <StyledTextInput
+                    label="First Name"
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    mode="outlined"
+                    left={<TextInput.Icon icon="account" />}
+                    outlineColor="#e0e0e0"
+                    activeOutlineColor="#007AFF"
+                    style={{ 
+                      borderColor: !firstName.trim() ? '#ff6b6b' : undefined,
+                      borderWidth: !firstName.trim() ? 2 : undefined
+                    }}
+                  />
+                  {!firstName.trim() && (
+                    <Text style={{ fontSize: 12, color: '#ff6b6b', marginTop: 4, marginLeft: 8 }}>
+                      First name is recommended
+                    </Text>
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <StyledTextInput
+                    label="Last Name"
+                    value={lastName}
+                    onChangeText={setLastName}
+                    mode="outlined"
+                    left={<TextInput.Icon icon="account" />}
+                    outlineColor="#e0e0e0"
+                    activeOutlineColor="#007AFF"
+                    style={{ 
+                      borderColor: !lastName.trim() ? '#ff6b6b' : undefined,
+                      borderWidth: !lastName.trim() ? 2 : undefined
+                    }}
+                  />
+                  {!lastName.trim() && (
+                    <Text style={{ fontSize: 12, color: '#ff6b6b', marginTop: 4, marginLeft: 8 }}>
+                      Last name is recommended
+                    </Text>
+                  )}
+                </View>
               </View>
 
               <StyledTextInput
@@ -587,7 +579,7 @@ export default function AddContactScreen() {
                 mode="outlined"
                 left={<TextInput.Icon icon="domain" />}
                 outlineColor="#e0e0e0"
-                activeOutlineColor="#6200ee"
+                activeOutlineColor="#007AFF"
               />
 
               <StyledTextInput
@@ -597,7 +589,7 @@ export default function AddContactScreen() {
                 mode="outlined"
                 left={<TextInput.Icon icon="briefcase" />}
                 outlineColor="#e0e0e0"
-                activeOutlineColor="#6200ee"
+                activeOutlineColor="#007AFF"
               />
 
               <StyledTextInput
@@ -608,7 +600,7 @@ export default function AddContactScreen() {
                 left={<TextInput.Icon icon="web" />}
                 keyboardType="url"
                 outlineColor="#e0e0e0"
-                activeOutlineColor="#6200ee"
+                activeOutlineColor="#007AFF"
               />
             </Card.Content>
           </SectionCard>
@@ -616,8 +608,25 @@ export default function AddContactScreen() {
 
         <Animated.View entering={FadeInUp.delay(200).springify()}>
           <SectionCard>
-            <Card.Content style={{ padding: 24 }}>
+            <Card.Content style={{ padding: 20 }}>
               <SectionHeader>📞 Phone Numbers</SectionHeader>
+              
+              {phoneNumbers.length === 0 && (
+                <View style={{ 
+                  padding: 20, 
+                  backgroundColor: '#f8f9fa', 
+                  borderRadius: 12, 
+                  alignItems: 'center',
+                  marginBottom: 16
+                }}>
+                  <Text style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
+                    No phone numbers added yet
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#999', textAlign: 'center', marginTop: 4 }}>
+                    Tap "Add Phone Number" to get started
+                  </Text>
+                </View>
+              )}
               
               {phoneNumbers.map((phone, index) => (
                 <ItemRow key={phone.id}>
@@ -631,7 +640,7 @@ export default function AddContactScreen() {
                       left={<TextInput.Icon icon="phone" />}
                       style={{ marginBottom: 12, backgroundColor: 'white' }}
                       outlineColor="#e0e0e0"
-                      activeOutlineColor="#6200ee"
+                      activeOutlineColor="#007AFF"
                     />
                     <View style={{ flexDirection: 'row', gap: 8 }}>
                       <TextInput
@@ -641,17 +650,17 @@ export default function AddContactScreen() {
                         mode="outlined"
                         style={{ flex: 1, backgroundColor: 'white' }}
                         outlineColor="#e0e0e0"
-                        activeOutlineColor="#6200ee"
+                        activeOutlineColor="#007AFF"
                       />
                       <Button
                         mode={phone.isPrimary ? "contained" : "outlined"}
                         onPress={() => setPrimaryPhone(phone.id)}
                         style={{ 
                           alignSelf: 'flex-end',
-                          backgroundColor: phone.isPrimary ? '#6200ee' : 'transparent',
-                          borderColor: '#6200ee'
+                          backgroundColor: phone.isPrimary ? '#007AFF' : 'transparent',
+                          borderColor: '#007AFF'
                         }}
-                        labelStyle={{ color: phone.isPrimary ? 'white' : '#6200ee' }}
+                        labelStyle={{ color: phone.isPrimary ? 'white' : '#007AFF' }}
                       >
                         {phone.isPrimary ? "Primary" : "Set Primary"}
                       </Button>
@@ -672,8 +681,8 @@ export default function AddContactScreen() {
                 mode="outlined"
                 onPress={addPhoneNumber}
                 icon="plus"
-                style={{ borderColor: '#6200ee' }}
-                labelStyle={{ color: '#6200ee' }}
+                style={{ borderColor: '#007AFF' }}
+                labelStyle={{ color: '#007AFF' }}
               >
                 Add Phone Number
               </AddButton>
@@ -683,8 +692,25 @@ export default function AddContactScreen() {
 
         <Animated.View entering={FadeInUp.delay(300).springify()}>
           <SectionCard>
-            <Card.Content style={{ padding: 24 }}>
+            <Card.Content style={{ padding: 20 }}>
               <SectionHeader>📧 Email Addresses</SectionHeader>
+              
+              {emailAddresses.length === 0 && (
+                <View style={{ 
+                  padding: 20, 
+                  backgroundColor: '#f8f9fa', 
+                  borderRadius: 12, 
+                  alignItems: 'center',
+                  marginBottom: 16
+                }}>
+                  <Text style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
+                    No email addresses added yet
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#999', textAlign: 'center', marginTop: 4 }}>
+                    Tap "Add Email Address" to get started
+                  </Text>
+                </View>
+              )}
               
               {emailAddresses.map((email, index) => (
                 <ItemRow key={email.id}>
@@ -698,7 +724,7 @@ export default function AddContactScreen() {
                       left={<TextInput.Icon icon="email" />}
                       style={{ marginBottom: 12, backgroundColor: 'white' }}
                       outlineColor="#e0e0e0"
-                      activeOutlineColor="#6200ee"
+                      activeOutlineColor="#007AFF"
                     />
                     <View style={{ flexDirection: 'row', gap: 8 }}>
                       <TextInput
@@ -708,17 +734,17 @@ export default function AddContactScreen() {
                         mode="outlined"
                         style={{ flex: 1, backgroundColor: 'white' }}
                         outlineColor="#e0e0e0"
-                        activeOutlineColor="#6200ee"
+                        activeOutlineColor="#007AFF"
                       />
                       <Button
                         mode={email.isPrimary ? "contained" : "outlined"}
                         onPress={() => setPrimaryEmail(email.id)}
                         style={{ 
                           alignSelf: 'flex-end',
-                          backgroundColor: email.isPrimary ? '#6200ee' : 'transparent',
-                          borderColor: '#6200ee'
+                          backgroundColor: email.isPrimary ? '#007AFF' : 'transparent',
+                          borderColor: '#007AFF'
                         }}
-                        labelStyle={{ color: email.isPrimary ? 'white' : '#6200ee' }}
+                        labelStyle={{ color: email.isPrimary ? 'white' : '#007AFF' }}
                       >
                         {email.isPrimary ? "Primary" : "Set Primary"}
                       </Button>
@@ -739,8 +765,8 @@ export default function AddContactScreen() {
                 mode="outlined"
                 onPress={addEmailAddress}
                 icon="plus"
-                style={{ borderColor: '#6200ee' }}
-                labelStyle={{ color: '#6200ee' }}
+                style={{ borderColor: '#007AFF' }}
+                labelStyle={{ color: '#007AFF' }}
               >
                 Add Email Address
               </AddButton>
@@ -760,7 +786,7 @@ export default function AddContactScreen() {
                 mode="outlined"
                 left={<TextInput.Icon icon="briefcase" />}
                 outlineColor="#e0e0e0"
-                activeOutlineColor="#6200ee"
+                activeOutlineColor="#007AFF"
               />
 
               <StyledTextInput
@@ -772,7 +798,7 @@ export default function AddContactScreen() {
                 multiline
                 numberOfLines={2}
                 outlineColor="#e0e0e0"
-                activeOutlineColor="#6200ee"
+                activeOutlineColor="#007AFF"
               />
 
               <StyledTextInput
@@ -782,7 +808,7 @@ export default function AddContactScreen() {
                 mode="outlined"
                 left={<TextInput.Icon icon="share-variant" />}
                 outlineColor="#e0e0e0"
-                activeOutlineColor="#6200ee"
+                activeOutlineColor="#007AFF"
               />
 
               <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -795,7 +821,7 @@ export default function AddContactScreen() {
                   placeholder="YYYY-MM-DD"
                   style={{ flex: 1 }}
                   outlineColor="#e0e0e0"
-                  activeOutlineColor="#6200ee"
+                  activeOutlineColor="#007AFF"
                 />
                 <StyledTextInput
                   label="Anniversary"
@@ -806,7 +832,7 @@ export default function AddContactScreen() {
                   placeholder="YYYY-MM-DD"
                   style={{ flex: 1 }}
                   outlineColor="#e0e0e0"
-                  activeOutlineColor="#6200ee"
+                  activeOutlineColor="#007AFF"
                 />
               </View>
 
@@ -819,7 +845,7 @@ export default function AddContactScreen() {
                 multiline
                 numberOfLines={3}
                 outlineColor="#e0e0e0"
-                activeOutlineColor="#6200ee"
+                activeOutlineColor="#007AFF"
               />
             </Card.Content>
           </SectionCard>
@@ -837,7 +863,7 @@ export default function AddContactScreen() {
                 mode="outlined"
                 left={<TextInput.Icon icon="account-group" />}
                 outlineColor="#e0e0e0"
-                activeOutlineColor="#6200ee"
+                activeOutlineColor="#007AFF"
               />
 
               <Text style={{ 
@@ -860,7 +886,7 @@ export default function AddContactScreen() {
                       fontWeight: '600'
                     }}
                     style={{ 
-                      backgroundColor: group === g ? '#6200ee' : '#f0f0f0'
+                      backgroundColor: group === g ? '#007AFF' : '#f0f0f0'
                     }}
                   >
                     {g}
@@ -888,7 +914,7 @@ export default function AddContactScreen() {
                       fontWeight: '600'
                     }}
                     style={{ 
-                      backgroundColor: labels.includes(label) ? '#6200ee' : '#f0f0f0'
+                      backgroundColor: labels.includes(label) ? '#007AFF' : '#f0f0f0'
                     }}
                   >
                     {label}
@@ -909,7 +935,7 @@ export default function AddContactScreen() {
                 <Switch
                   value={isEmergencyContact}
                   onValueChange={setIsEmergencyContact}
-                  color="#6200ee"
+                  color="#007AFF"
                 />
               </SwitchRow>
               
@@ -936,12 +962,41 @@ export default function AddContactScreen() {
         <View style={{ height: 100 }} />
       </FormScroll>
 
+      {/* Floating Save Button */}
+      <FloatingSaveButton>
+        <View style={{
+          backgroundColor: 'white',
+          borderRadius: 16,
+          padding: 4,
+        }}>
+          <Button
+            mode="contained"
+            onPress={handleAddContact}
+            disabled={!canSave || isSaving}
+            loading={isSaving}
+            icon="content-save"
+            style={{
+              borderRadius: 12,
+              paddingVertical: 8,
+              backgroundColor: canSave ? '#007AFF' : '#ccc',
+            }}
+            labelStyle={{
+              fontSize: 16,
+              fontWeight: '600',
+              color: 'white',
+            }}
+          >
+            {isSaving ? 'Saving...' : 'Save Contact'}
+          </Button>
+        </View>
+      </FloatingSaveButton>
+
       <Snackbar
         visible={snackbar.visible}
         onDismiss={() => setSnackbar({ visible: false, message: '' })}
         duration={3000}
         style={{ 
-          backgroundColor: '#ff6b6b', 
+          backgroundColor: snackbar.message.includes('successfully') ? '#4CAF50' : '#ff6b6b', 
           borderRadius: 12,
           margin: 16
         }}

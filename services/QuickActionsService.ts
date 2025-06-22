@@ -37,9 +37,12 @@ class QuickActionsService {
   };
 
   private readonly SETTINGS_STORAGE_KEY = 'quick_actions_settings';
+  private readonly APP_AVAILABILITY_CACHE_KEY = 'app_availability_cache';
+  private appAvailabilityCache: Map<string, boolean> = new Map();
 
   private constructor() {
     this.loadSettings();
+    this.loadAppAvailabilityCache();
   }
 
   static getInstance(): QuickActionsService {
@@ -68,11 +71,83 @@ class QuickActionsService {
     }
   }
 
+  private async loadAppAvailabilityCache() {
+    try {
+      const storedCache = await AsyncStorage.getItem(this.APP_AVAILABILITY_CACHE_KEY);
+      if (storedCache) {
+        this.appAvailabilityCache = new Map(JSON.parse(storedCache));
+      }
+    } catch (error) {
+      console.error('Error loading app availability cache:', error);
+    }
+  }
+
+  private async saveAppAvailabilityCache() {
+    try {
+      const cacheArray = Array.from(this.appAvailabilityCache.entries());
+      await AsyncStorage.setItem(this.APP_AVAILABILITY_CACHE_KEY, JSON.stringify(cacheArray));
+    } catch (error) {
+      console.error('Error saving app availability cache:', error);
+    }
+  }
+
+  // Check if an app is available on the device
+  private async checkAppAvailability(appScheme: string): Promise<boolean> {
+    // Check cache first
+    if (this.appAvailabilityCache.has(appScheme)) {
+      return this.appAvailabilityCache.get(appScheme)!;
+    }
+
+    try {
+      const isAvailable = await Linking.canOpenURL(appScheme);
+      // Cache the result
+      this.appAvailabilityCache.set(appScheme, isAvailable);
+      await this.saveAppAvailabilityCache();
+      return isAvailable;
+    } catch (error) {
+      console.error(`Error checking app availability for ${appScheme}:`, error);
+      this.appAvailabilityCache.set(appScheme, false);
+      await this.saveAppAvailabilityCache();
+      return false;
+    }
+  }
+
+  // Check availability for multiple apps with improved detection
+  private async checkMultipleAppAvailability(): Promise<{
+    whatsapp: boolean;
+    telegram: boolean;
+    facetime: boolean;
+    sms: boolean;
+    email: boolean;
+  }> {
+    // Try multiple URL schemes for better detection
+    const [whatsapp1, whatsapp2, telegram, facetime, sms, email] = await Promise.all([
+      this.checkAppAvailability('whatsapp://'),
+      this.checkAppAvailability('whatsapp://send'),
+      this.checkAppAvailability('tg://'),
+      this.checkAppAvailability('facetime://'),
+      this.checkAppAvailability('sms:'),
+      this.checkAppAvailability('mailto:')
+    ]);
+
+    // WhatsApp is available if either scheme works
+    const whatsapp = whatsapp1 || whatsapp2;
+
+    return {
+      whatsapp,
+      telegram,
+      facetime: Platform.OS === 'ios' && facetime,
+      sms,
+      email
+    };
+  }
+
   // Get available quick actions for a contact
   async getQuickActions(contact: Contact): Promise<QuickAction[]> {
     const actions: QuickAction[] = [];
+    const appAvailability = await this.checkMultipleAppAvailability();
 
-    // Phone call
+    // Phone call (always available if phone numbers exist)
     if (contact.phoneNumbers && contact.phoneNumbers.length > 0) {
       actions.push({
         id: 'phone_call',
@@ -84,7 +159,7 @@ class QuickActionsService {
       });
     }
 
-    // FaceTime (iOS only)
+    // FaceTime (iOS only, if available)
     if (Platform.OS === 'ios' && contact.phoneNumbers && contact.phoneNumbers.length > 0) {
       actions.push({
         id: 'facetime',
@@ -92,11 +167,11 @@ class QuickActionsService {
         icon: '📹',
         type: 'video',
         platform: 'facetime',
-        isAvailable: this.settings.enableFaceTime
+        isAvailable: this.settings.enableFaceTime && appAvailability.facetime
       });
     }
 
-    // WhatsApp
+    // WhatsApp (if available)
     if (contact.phoneNumbers && contact.phoneNumbers.length > 0) {
       actions.push({
         id: 'whatsapp',
@@ -104,11 +179,11 @@ class QuickActionsService {
         icon: '💬',
         type: 'message',
         platform: 'whatsapp',
-        isAvailable: this.settings.enableWhatsApp
+        isAvailable: this.settings.enableWhatsApp && appAvailability.whatsapp
       });
     }
 
-    // Telegram
+    // Telegram (if available)
     if (contact.phoneNumbers && contact.phoneNumbers.length > 0) {
       actions.push({
         id: 'telegram',
@@ -116,11 +191,11 @@ class QuickActionsService {
         icon: '📱',
         type: 'message',
         platform: 'telegram',
-        isAvailable: this.settings.enableTelegram
+        isAvailable: this.settings.enableTelegram && appAvailability.telegram
       });
     }
 
-    // SMS
+    // SMS (if available)
     if (contact.phoneNumbers && contact.phoneNumbers.length > 0) {
       actions.push({
         id: 'sms',
@@ -128,11 +203,11 @@ class QuickActionsService {
         icon: '💬',
         type: 'message',
         platform: 'sms',
-        isAvailable: this.settings.enableSMS
+        isAvailable: this.settings.enableSMS && appAvailability.sms
       });
     }
 
-    // Email
+    // Email (if available)
     if (contact.emailAddresses && contact.emailAddresses.length > 0) {
       actions.push({
         id: 'email',
@@ -140,7 +215,7 @@ class QuickActionsService {
         icon: '📧',
         type: 'email',
         platform: 'email',
-        isAvailable: this.settings.enableEmail
+        isAvailable: this.settings.enableEmail && appAvailability.email
       });
     }
 
@@ -399,6 +474,87 @@ class QuickActionsService {
       return null;
     }
     return contact.emailAddresses[0].email;
+  }
+
+  // Refresh app availability cache
+  async refreshAppAvailability(): Promise<void> {
+    this.appAvailabilityCache.clear();
+    await this.saveAppAvailabilityCache();
+    // Force re-check on next getQuickActions call
+  }
+
+  // Force refresh app availability with debugging
+  async forceRefreshAppAvailability(): Promise<{
+    whatsapp: boolean;
+    telegram: boolean;
+    facetime: boolean;
+    sms: boolean;
+    email: boolean;
+  }> {
+    console.log('Force refreshing app availability...');
+    
+    // Clear cache first
+    this.appAvailabilityCache.clear();
+    await this.saveAppAvailabilityCache();
+    
+    // Test individual schemes with logging
+    const schemes = [
+      { name: 'WhatsApp (basic)', scheme: 'whatsapp://' },
+      { name: 'WhatsApp (send)', scheme: 'whatsapp://send' },
+      { name: 'Telegram', scheme: 'tg://' },
+      { name: 'FaceTime', scheme: 'facetime://' },
+      { name: 'SMS', scheme: 'sms:' },
+      { name: 'Email', scheme: 'mailto:' }
+    ];
+
+    const results: { [key: string]: boolean } = {};
+    
+    for (const { name, scheme } of schemes) {
+      try {
+        const isAvailable = await Linking.canOpenURL(scheme);
+        results[name] = isAvailable;
+        console.log(`${name}: ${isAvailable ? 'Available' : 'Not Available'}`);
+        
+        // Cache the result
+        this.appAvailabilityCache.set(scheme, isAvailable);
+      } catch (error) {
+        console.error(`Error checking ${name}:`, error);
+        results[name] = false;
+        this.appAvailabilityCache.set(scheme, false);
+      }
+    }
+    
+    await this.saveAppAvailabilityCache();
+    
+    // Return the final results
+    const whatsapp = results['WhatsApp (basic)'] || results['WhatsApp (send)'];
+    
+    return {
+      whatsapp,
+      telegram: results['Telegram'],
+      facetime: Platform.OS === 'ios' && results['FaceTime'],
+      sms: results['SMS'],
+      email: results['Email']
+    };
+  }
+
+  // Manual override for WhatsApp availability (in case detection fails)
+  async overrideWhatsAppAvailability(isAvailable: boolean): Promise<void> {
+    this.appAvailabilityCache.set('whatsapp://', isAvailable);
+    this.appAvailabilityCache.set('whatsapp://send', isAvailable);
+    await this.saveAppAvailabilityCache();
+    console.log(`WhatsApp availability manually set to: ${isAvailable}`);
+  }
+
+  // Get current app availability status
+  async getAppAvailabilityStatus(): Promise<{
+    whatsapp: boolean;
+    telegram: boolean;
+    facetime: boolean;
+    sms: boolean;
+    email: boolean;
+  }> {
+    return await this.checkMultipleAppAvailability();
   }
 }
 

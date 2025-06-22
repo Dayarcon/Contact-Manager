@@ -1,14 +1,16 @@
+import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
-import { Button, Card, IconButton, Snackbar, Text } from 'react-native-paper';
+import { Button, Card, IconButton, Snackbar, Switch, Text } from 'react-native-paper';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import styled from 'styled-components/native';
 import { useContacts } from '../context/ContactsContext';
 import GeoLocationService from '../services/GeoLocationService';
+import QuickActionsService from '../services/QuickActionsService';
 
 const Container = styled.View`
   flex: 1;
@@ -139,6 +141,17 @@ export default function SettingsScreen() {
   const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
   const [loading, setLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [appAvailability, setAppAvailability] = useState({
+    whatsapp: false,
+    telegram: false,
+    facetime: false,
+    sms: false,
+    email: false
+  });
+  
+  const quickActionsService = QuickActionsService.getInstance();
+  const [quickActionSettings, setQuickActionSettings] = useState(quickActionsService.getSettings());
 
   const { contacts, importContacts, isLoading } = useContacts() || {
     contacts: [],
@@ -148,6 +161,57 @@ export default function SettingsScreen() {
 
   const geoLocationService = GeoLocationService.getInstance();
   const locationStats = geoLocationService.getLocationStats();
+
+  useEffect(() => {
+    loadAppAvailability();
+  }, []);
+
+  const loadAppAvailability = async () => {
+    try {
+      const availability = await quickActionsService.getAppAvailabilityStatus();
+      setAppAvailability(availability);
+    } catch (error) {
+      console.error('Error loading app availability:', error);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadAppAvailability();
+    setRefreshing(false);
+  };
+
+  const handleQuickActionSettingChange = async (key: keyof typeof quickActionSettings, value: boolean) => {
+    try {
+      const newSettings = { ...quickActionSettings, [key]: value };
+      await quickActionsService.updateSettings(newSettings);
+      setQuickActionSettings(newSettings);
+    } catch (error) {
+      console.error('Error updating quick action settings:', error);
+      Alert.alert('Error', 'Failed to update settings');
+    }
+  };
+
+  const refreshAppAvailability = async () => {
+    try {
+      setSnackbar({ visible: true, message: 'Refreshing app detection...' });
+      
+      // Use the new force refresh method with debugging
+      const availability = await quickActionsService.forceRefreshAppAvailability();
+      setAppAvailability(availability);
+      
+      console.log('App availability refreshed:', availability);
+      
+      if (availability.whatsapp) {
+        setSnackbar({ visible: true, message: 'WhatsApp detected successfully!' });
+      } else {
+        setSnackbar({ visible: true, message: 'WhatsApp not detected. Check console for details.' });
+      }
+    } catch (error) {
+      console.error('Error refreshing app availability:', error);
+      setSnackbar({ visible: true, message: 'Failed to refresh app availability' });
+    }
+  };
 
   const exportToJSON = async () => {
     try {
@@ -489,6 +553,226 @@ export default function SettingsScreen() {
                 labelStyle={{ color: '#1976D2' }}
               >
                 Nearby Contacts
+              </ExportButton>
+            </Card.Content>
+          </ExportSection>
+        </Animated.View>
+
+        <Animated.View entering={FadeInUp.delay(300).springify()}>
+          <ExportSection>
+            <Card.Content style={{ padding: 24 }}>
+              <Text style={{ 
+                fontSize: 20, 
+                fontWeight: '800', 
+                marginBottom: 20, 
+                color: '#1a1a1a',
+                letterSpacing: 0.5
+              }}>
+                🚀 Quick Actions
+              </Text>
+              
+              <Text style={{ 
+                fontSize: 14, 
+                color: '#666666', 
+                marginBottom: 20,
+                lineHeight: 20
+              }}>
+                Manage quick actions and app preferences.
+              </Text>
+
+              {/* App Availability Status */}
+              <View style={{ 
+                backgroundColor: '#f8f9fa',
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 20
+              }}>
+                <Text style={{ 
+                  fontSize: 16, 
+                  fontWeight: '600', 
+                  marginBottom: 12,
+                  color: '#1a1a1a'
+                }}>
+                  App Availability
+                </Text>
+                
+                <View style={{ gap: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
+                      <Text style={{ marginLeft: 8, fontSize: 14, color: '#666' }}>WhatsApp</Text>
+                    </View>
+                    <Ionicons 
+                      name={appAvailability.whatsapp ? 'checkmark-circle' : 'close-circle'} 
+                      size={20} 
+                      color={appAvailability.whatsapp ? '#4CAF50' : '#f44336'} 
+                    />
+                  </View>
+                  
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="paper-plane" size={20} color="#0088cc" />
+                      <Text style={{ marginLeft: 8, fontSize: 14, color: '#666' }}>Telegram</Text>
+                    </View>
+                    <Ionicons 
+                      name={appAvailability.telegram ? 'checkmark-circle' : 'close-circle'} 
+                      size={20} 
+                      color={appAvailability.telegram ? '#4CAF50' : '#f44336'} 
+                    />
+                  </View>
+                  
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="videocam" size={20} color="#2196F3" />
+                      <Text style={{ marginLeft: 8, fontSize: 14, color: '#666' }}>FaceTime</Text>
+                    </View>
+                    <Ionicons 
+                      name={appAvailability.facetime ? 'checkmark-circle' : 'close-circle'} 
+                      size={20} 
+                      color={appAvailability.facetime ? '#4CAF50' : '#f44336'} 
+                    />
+                  </View>
+                  
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="chatbubble" size={20} color="#FF9800" />
+                      <Text style={{ marginLeft: 8, fontSize: 14, color: '#666' }}>SMS</Text>
+                    </View>
+                    <Ionicons 
+                      name={appAvailability.sms ? 'checkmark-circle' : 'close-circle'} 
+                      size={20} 
+                      color={appAvailability.sms ? '#4CAF50' : '#f44336'} 
+                    />
+                  </View>
+                  
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="mail" size={20} color="#9C27B0" />
+                      <Text style={{ marginLeft: 8, fontSize: 14, color: '#666' }}>Email</Text>
+                    </View>
+                    <Ionicons 
+                      name={appAvailability.email ? 'checkmark-circle' : 'close-circle'} 
+                      size={20} 
+                      color={appAvailability.email ? '#4CAF50' : '#f44336'} 
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* Quick Action Preferences */}
+              <View style={{ marginBottom: 20 }}>
+                <Text style={{ 
+                  fontSize: 16, 
+                  fontWeight: '600', 
+                  marginBottom: 12,
+                  color: '#1a1a1a'
+                }}>
+                  Quick Action Preferences
+                </Text>
+                
+                <View style={{ gap: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
+                      <Text style={{ marginLeft: 8, fontSize: 14, color: '#666' }}>Show WhatsApp</Text>
+                    </View>
+                    <Switch
+                      value={quickActionSettings.enableWhatsApp}
+                      onValueChange={(value) => handleQuickActionSettingChange('enableWhatsApp', value)}
+                      trackColor={{ false: '#767577', true: '#25D366' }}
+                      thumbColor={quickActionSettings.enableWhatsApp ? '#fff' : '#f4f3f4'}
+                    />
+                  </View>
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="paper-plane" size={20} color="#0088cc" />
+                      <Text style={{ marginLeft: 8, fontSize: 14, color: '#666' }}>Show Telegram</Text>
+                    </View>
+                    <Switch
+                      value={quickActionSettings.enableTelegram}
+                      onValueChange={(value) => handleQuickActionSettingChange('enableTelegram', value)}
+                      trackColor={{ false: '#767577', true: '#0088cc' }}
+                      thumbColor={quickActionSettings.enableTelegram ? '#fff' : '#f4f3f4'}
+                    />
+                  </View>
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="videocam" size={20} color="#2196F3" />
+                      <Text style={{ marginLeft: 8, fontSize: 14, color: '#666' }}>Show FaceTime</Text>
+                    </View>
+                    <Switch
+                      value={quickActionSettings.enableFaceTime}
+                      onValueChange={(value) => handleQuickActionSettingChange('enableFaceTime', value)}
+                      trackColor={{ false: '#767577', true: '#2196F3' }}
+                      thumbColor={quickActionSettings.enableFaceTime ? '#fff' : '#f4f3f4'}
+                    />
+                  </View>
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="chatbubble" size={20} color="#FF9800" />
+                      <Text style={{ marginLeft: 8, fontSize: 14, color: '#666' }}>Show SMS</Text>
+                    </View>
+                    <Switch
+                      value={quickActionSettings.enableSMS}
+                      onValueChange={(value) => handleQuickActionSettingChange('enableSMS', value)}
+                      trackColor={{ false: '#767577', true: '#FF9800' }}
+                      thumbColor={quickActionSettings.enableSMS ? '#fff' : '#f4f3f4'}
+                    />
+                  </View>
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="mail" size={20} color="#9C27B0" />
+                      <Text style={{ marginLeft: 8, fontSize: 14, color: '#666' }}>Show Email</Text>
+                    </View>
+                    <Switch
+                      value={quickActionSettings.enableEmail}
+                      onValueChange={(value) => handleQuickActionSettingChange('enableEmail', value)}
+                      trackColor={{ false: '#767577', true: '#9C27B0' }}
+                      thumbColor={quickActionSettings.enableEmail ? '#fff' : '#f4f3f4'}
+                    />
+                  </View>
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="eye" size={20} color="#666" />
+                      <Text style={{ marginLeft: 8, fontSize: 14, color: '#666' }}>Show Unavailable Apps</Text>
+                    </View>
+                    <Switch
+                      value={quickActionSettings.showUnavailableActions}
+                      onValueChange={(value) => handleQuickActionSettingChange('showUnavailableActions', value)}
+                      trackColor={{ false: '#767577', true: '#666' }}
+                      thumbColor={quickActionSettings.showUnavailableActions ? '#fff' : '#f4f3f4'}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              <ExportButton
+                mode="outlined"
+                onPress={refreshAppAvailability}
+                icon="refresh"
+                style={{ borderColor: '#1976D2' }}
+                labelStyle={{ color: '#1976D2' }}
+              >
+                Refresh App Detection
+              </ExportButton>
+
+              <ExportButton
+                mode="outlined"
+                onPress={() => {
+                  quickActionsService.overrideWhatsAppAvailability(true);
+                  setAppAvailability(prev => ({ ...prev, whatsapp: true }));
+                  setSnackbar({ visible: true, message: 'WhatsApp manually enabled!' });
+                }}
+                icon="check-circle"
+                style={{ borderColor: '#25D366', marginTop: 8 }}
+                labelStyle={{ color: '#25D366' }}
+              >
+                Force Enable WhatsApp
               </ExportButton>
             </Card.Content>
           </ExportSection>
