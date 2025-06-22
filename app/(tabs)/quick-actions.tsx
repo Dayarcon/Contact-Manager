@@ -1,8 +1,9 @@
+import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
 import { Appbar, Avatar, Button, Card, Text, useTheme } from 'react-native-paper';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import styled from 'styled-components/native';
@@ -94,8 +95,6 @@ const GridButton = styled.View`
   width: 48%;
   margin-bottom: 12px;
 `;
-
-const AnimatedCard = Animated.createAnimatedComponent(ActionCard);
 
 export default function QuickActionsScreen() {
   const router = useRouter();
@@ -241,21 +240,96 @@ export default function QuickActionsScreen() {
   const primaryPhone = contact.phoneNumbers?.find(p => p.isPrimary) || contact.phoneNumbers?.[0];
   const primaryEmail = contact.emailAddresses?.find(e => e.isPrimary) || contact.emailAddresses?.[0];
 
-  const handleCall = () => {
+  const handleCall = async () => {
     if (primaryPhone) {
-      Linking.openURL(`tel:${primaryPhone.number}`);
+      try {
+        const canOpen = await Linking.canOpenURL(`tel:${primaryPhone.number}`);
+        if (canOpen) {
+          await Linking.openURL(`tel:${primaryPhone.number}`);
+        } else {
+          // Fallback: show alert with phone number
+          Alert.alert(
+            'Phone Dialer Not Available',
+            `Phone number: ${primaryPhone.number}\n\nThis device doesn't support phone calls or you're running in a simulator.`,
+            [
+              { text: 'Copy Number', onPress: () => Clipboard.setString(primaryPhone.number) },
+              { text: 'OK', style: 'cancel' }
+            ]
+          );
+        }
+      } catch (error) {
+        console.error('Error opening phone dialer:', error);
+        Alert.alert(
+          'Cannot Open Phone Dialer',
+          `Phone number: ${primaryPhone.number}\n\nThis feature is not available on this device or simulator.`,
+          [
+            { text: 'Copy Number', onPress: () => Clipboard.setString(primaryPhone.number) },
+            { text: 'OK', style: 'cancel' }
+          ]
+        );
+      }
     }
   };
 
-  const handleMessage = () => {
+  const handleMessage = async () => {
     if (primaryPhone) {
-      Linking.openURL(`sms:${primaryPhone.number}`);
+      try {
+        const canOpen = await Linking.canOpenURL(`sms:${primaryPhone.number}`);
+        if (canOpen) {
+          await Linking.openURL(`sms:${primaryPhone.number}`);
+        } else {
+          // Fallback: show alert with phone number
+          Alert.alert(
+            'SMS Not Available',
+            `Phone number: ${primaryPhone.number}\n\nThis device doesn't support SMS or you're running in a simulator.`,
+            [
+              { text: 'Copy Number', onPress: () => Clipboard.setString(primaryPhone.number) },
+              { text: 'OK', style: 'cancel' }
+            ]
+          );
+        }
+      } catch (error) {
+        console.error('Error opening SMS:', error);
+        Alert.alert(
+          'Cannot Open SMS',
+          `Phone number: ${primaryPhone.number}\n\nThis feature is not available on this device or simulator.`,
+          [
+            { text: 'Copy Number', onPress: () => Clipboard.setString(primaryPhone.number) },
+            { text: 'OK', style: 'cancel' }
+          ]
+        );
+      }
     }
   };
 
-  const handleEmail = () => {
+  const handleEmail = async () => {
     if (primaryEmail) {
-      Linking.openURL(`mailto:${primaryEmail.email}`);
+      try {
+        const canOpen = await Linking.canOpenURL(`mailto:${primaryEmail.email}`);
+        if (canOpen) {
+          await Linking.openURL(`mailto:${primaryEmail.email}`);
+        } else {
+          // Fallback: show alert with email
+          Alert.alert(
+            'Email Not Available',
+            `Email: ${primaryEmail.email}\n\nThis device doesn't support email or you're running in a simulator.`,
+            [
+              { text: 'Copy Email', onPress: () => Clipboard.setString(primaryEmail.email) },
+              { text: 'OK', style: 'cancel' }
+            ]
+          );
+        }
+      } catch (error) {
+        console.error('Error opening email:', error);
+        Alert.alert(
+          'Cannot Open Email',
+          `Email: ${primaryEmail.email}\n\nThis feature is not available on this device or simulator.`,
+          [
+            { text: 'Copy Email', onPress: () => Clipboard.setString(primaryEmail.email) },
+            { text: 'OK', style: 'cancel' }
+          ]
+        );
+      }
     }
   };
 
@@ -321,179 +395,187 @@ export default function QuickActionsScreen() {
       </Appbar.Header>
       
       <ContentScroll>
-        <AnimatedCard entering={FadeInUp.delay(100)}>
-          <Card.Content>
-            <ContactInfo>
-              {contact.imageUri ? (
-                <Avatar.Image
-                  source={{ uri: contact.imageUri }}
-                  size={80}
-                  style={{ alignSelf: 'center' }}
-                />
-              ) : (
-                <Avatar.Text
-                  label={getInitials(contact.name)}
-                  size={80}
-                  style={{ 
-                    backgroundColor: contact.isFavorite ? theme.colors.primary : theme.colors.secondary,
-                    alignSelf: 'center'
-                  }}
-                />
-              )}
-              <ContactName>{contact.name}</ContactName>
-              {primaryPhone && (
-                <ContactSubtitle>{primaryPhone.number}</ContactSubtitle>
-              )}
-              {contact.company && (
-                <ContactSubtitle>{contact.company}</ContactSubtitle>
-              )}
-            </ContactInfo>
-          </Card.Content>
-        </AnimatedCard>
+        <Animated.View entering={FadeInUp.delay(100)}>
+          <ActionCard>
+            <Card.Content>
+              <ContactInfo>
+                {contact.imageUri ? (
+                  <Avatar.Image
+                    source={{ uri: contact.imageUri }}
+                    size={80}
+                    style={{ alignSelf: 'center' }}
+                  />
+                ) : (
+                  <Avatar.Text
+                    label={getInitials(contact.name)}
+                    size={80}
+                    style={{ 
+                      backgroundColor: contact.isFavorite ? theme.colors.primary : theme.colors.secondary,
+                      alignSelf: 'center'
+                    }}
+                  />
+                )}
+                <ContactName>{contact.name}</ContactName>
+                {primaryPhone && (
+                  <ContactSubtitle>{primaryPhone.number}</ContactSubtitle>
+                )}
+                {contact.company && (
+                  <ContactSubtitle>{contact.company}</ContactSubtitle>
+                )}
+              </ContactInfo>
+            </Card.Content>
+          </ActionCard>
+        </Animated.View>
 
-        <AnimatedCard entering={FadeInUp.delay(200)}>
-          <Card.Content>
-            <SectionHeader>Communication</SectionHeader>
-            <ActionGrid>
-              <GridButton>
-                <ActionButton
-                  mode="contained"
-                  icon="phone"
-                  onPress={handleCall}
-                  disabled={!primaryPhone}
-                  style={{ backgroundColor: theme.colors.primary }}
-                  contentStyle={{ height: 48 }}
-                >
-                  Call
-                </ActionButton>
-              </GridButton>
-              <GridButton>
-                <ActionButton
-                  mode="contained"
-                  icon="message"
-                  onPress={handleMessage}
-                  disabled={!primaryPhone}
-                  style={{ backgroundColor: theme.colors.secondary }}
-                  contentStyle={{ height: 48 }}
-                >
-                  Message
-                </ActionButton>
-              </GridButton>
-              <GridButton>
-                <ActionButton
-                  mode="contained"
-                  icon="email"
-                  onPress={handleEmail}
-                  disabled={!primaryEmail}
-                  style={{ backgroundColor: theme.colors.tertiary }}
-                  contentStyle={{ height: 48 }}
-                >
-                  Email
-                </ActionButton>
-              </GridButton>
-              <GridButton>
-                <ActionButton
-                  mode="contained"
-                  icon="video"
-                  onPress={handleVideoCall}
-                  disabled={!primaryPhone}
-                  style={{ backgroundColor: theme.colors.error }}
-                  contentStyle={{ height: 48 }}
-                >
-                  Video Call
-                </ActionButton>
-              </GridButton>
-            </ActionGrid>
-          </Card.Content>
-        </AnimatedCard>
+        <Animated.View entering={FadeInUp.delay(200)}>
+          <ActionCard>
+            <Card.Content>
+              <SectionHeader>Communication</SectionHeader>
+              <ActionGrid>
+                <GridButton>
+                  <ActionButton
+                    mode="contained"
+                    icon="phone"
+                    onPress={handleCall}
+                    disabled={!primaryPhone}
+                    style={{ backgroundColor: theme.colors.primary }}
+                    contentStyle={{ height: 48 }}
+                  >
+                    Call
+                  </ActionButton>
+                </GridButton>
+                <GridButton>
+                  <ActionButton
+                    mode="contained"
+                    icon="message"
+                    onPress={handleMessage}
+                    disabled={!primaryPhone}
+                    style={{ backgroundColor: theme.colors.secondary }}
+                    contentStyle={{ height: 48 }}
+                  >
+                    Message
+                  </ActionButton>
+                </GridButton>
+                <GridButton>
+                  <ActionButton
+                    mode="contained"
+                    icon="email"
+                    onPress={handleEmail}
+                    disabled={!primaryEmail}
+                    style={{ backgroundColor: theme.colors.tertiary }}
+                    contentStyle={{ height: 48 }}
+                  >
+                    Email
+                  </ActionButton>
+                </GridButton>
+                <GridButton>
+                  <ActionButton
+                    mode="contained"
+                    icon="video"
+                    onPress={handleVideoCall}
+                    disabled={!primaryPhone}
+                    style={{ backgroundColor: theme.colors.error }}
+                    contentStyle={{ height: 48 }}
+                  >
+                    Video Call
+                  </ActionButton>
+                </GridButton>
+              </ActionGrid>
+            </Card.Content>
+          </ActionCard>
+        </Animated.View>
 
-        <AnimatedCard entering={FadeInUp.delay(300)}>
-          <Card.Content>
-            <SectionHeader>Information & Sharing</SectionHeader>
-            <ActionGrid>
-              {contact.website && (
+        <Animated.View entering={FadeInUp.delay(300)}>
+          <ActionCard>
+            <Card.Content>
+              <SectionHeader>Information & Sharing</SectionHeader>
+              <ActionGrid>
+                {contact.website && (
+                  <GridButton>
+                    <ActionButton
+                      mode="outlined"
+                      icon="web"
+                      onPress={handleWebsite}
+                      style={{ borderColor: theme.colors.outline }}
+                      contentStyle={{ height: 48 }}
+                    >
+                      Website
+                    </ActionButton>
+                  </GridButton>
+                )}
+                {contact.address && (
+                  <GridButton>
+                    <ActionButton
+                      mode="outlined"
+                      icon="map-marker"
+                      onPress={handleMaps}
+                      style={{ borderColor: theme.colors.outline }}
+                      contentStyle={{ height: 48 }}
+                    >
+                      Maps
+                    </ActionButton>
+                  </GridButton>
+                )}
                 <GridButton>
                   <ActionButton
                     mode="outlined"
-                    icon="web"
-                    onPress={handleWebsite}
+                    icon="share-variant"
+                    onPress={handleShare}
                     style={{ borderColor: theme.colors.outline }}
                     contentStyle={{ height: 48 }}
                   >
-                    Website
+                    Share
                   </ActionButton>
                 </GridButton>
-              )}
-              {contact.address && (
-                <GridButton>
-                  <ActionButton
-                    mode="outlined"
-                    icon="map-marker"
-                    onPress={handleMaps}
-                    style={{ borderColor: theme.colors.outline }}
-                    contentStyle={{ height: 48 }}
-                  >
-                    Maps
-                  </ActionButton>
-                </GridButton>
-              )}
-              <GridButton>
-                <ActionButton
-                  mode="outlined"
-                  icon="share-variant"
-                  onPress={handleShare}
-                  style={{ borderColor: theme.colors.outline }}
-                  contentStyle={{ height: 48 }}
-                >
-                  Share
-                </ActionButton>
-              </GridButton>
-              {contact.birthday && (
-                <GridButton>
-                  <ActionButton
-                    mode="outlined"
-                    icon="calendar"
-                    onPress={handleAddToCalendar}
-                    style={{ borderColor: theme.colors.outline }}
-                    contentStyle={{ height: 48 }}
-                  >
-                    Calendar
-                  </ActionButton>
-                </GridButton>
-              )}
-            </ActionGrid>
-          </Card.Content>
-        </AnimatedCard>
+                {contact.birthday && (
+                  <GridButton>
+                    <ActionButton
+                      mode="outlined"
+                      icon="calendar"
+                      onPress={handleAddToCalendar}
+                      style={{ borderColor: theme.colors.outline }}
+                      contentStyle={{ height: 48 }}
+                    >
+                      Calendar
+                    </ActionButton>
+                  </GridButton>
+                )}
+              </ActionGrid>
+            </Card.Content>
+          </ActionCard>
+        </Animated.View>
 
-        <AnimatedCard entering={FadeInUp.delay(400)}>
-          <Card.Content>
-            <SectionHeader>Contact Management</SectionHeader>
-            <ActionGrid>
-              <GridButton>
-                <ActionButton
-                  mode="outlined"
-                  icon="pencil"
-                  onPress={() => router.push({ pathname: '/(tabs)/edit-contact', params: { id: contact.id } })}
-                  style={{ borderColor: theme.colors.outline }}
-                  contentStyle={{ height: 48 }}
-                >
-                  Edit Contact
-                </ActionButton>
-              </GridButton>
-              <GridButton>
-                <ActionButton
-                  mode="outlined"
-                  icon="account-details"
-                  onPress={() => router.push({ pathname: '/(tabs)/contact-details', params: { id: contact.id } })}
-                  style={{ borderColor: theme.colors.outline }}
-                  contentStyle={{ height: 48 }}
-                >
-                  View Details
-                </ActionButton>
-              </GridButton>
-            </ActionGrid>
-          </Card.Content>
-        </AnimatedCard>
+        <Animated.View entering={FadeInUp.delay(400)}>
+          <ActionCard>
+            <Card.Content>
+              <SectionHeader>Contact Management</SectionHeader>
+              <ActionGrid>
+                <GridButton>
+                  <ActionButton
+                    mode="outlined"
+                    icon="pencil"
+                    onPress={() => router.push({ pathname: '/(tabs)/edit-contact', params: { id: contact.id } })}
+                    style={{ borderColor: theme.colors.outline }}
+                    contentStyle={{ height: 48 }}
+                  >
+                    Edit Contact
+                  </ActionButton>
+                </GridButton>
+                <GridButton>
+                  <ActionButton
+                    mode="outlined"
+                    icon="account-details"
+                    onPress={() => router.push({ pathname: '/contact-details', params: { id: contact.id } })}
+                    style={{ borderColor: theme.colors.outline }}
+                    contentStyle={{ height: 48 }}
+                  >
+                    View Details
+                  </ActionButton>
+                </GridButton>
+              </ActionGrid>
+            </Card.Content>
+          </ActionCard>
+        </Animated.View>
 
         <View style={{ height: 100 }} />
       </ContentScroll>

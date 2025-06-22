@@ -261,9 +261,8 @@ export default function EditContactScreen() {
       return;
     }
 
-    const name = `${firstName} ${lastName}`.trim();
-    editContact(id, { 
-      name,
+    editContact(id, {
+      name: `${firstName} ${lastName}`.trim(),
       firstName: firstName.trim() || undefined,
       lastName: lastName.trim() || undefined,
       company: company.trim() || undefined,
@@ -279,8 +278,14 @@ export default function EditContactScreen() {
       birthday,
       anniversary,
       imageUri,
-      phoneNumbers,
-      emailAddresses
+      phoneNumbers: phoneNumbers.map(phone => ({
+        ...phone,
+        type: phone.type as 'mobile' | 'work' | 'home' | 'other'
+      })),
+      emailAddresses: emailAddresses.map(email => ({
+        ...email,
+        type: email.type as 'personal' | 'work' | 'other'
+      }))
     });
     router.back();
   };

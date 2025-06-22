@@ -1,6 +1,7 @@
+import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
 import React from 'react';
-import { Dimensions, Vibration, View } from 'react-native';
+import { Alert, Dimensions, Vibration, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Avatar, Chip, IconButton, Text, TouchableRipple, useTheme } from 'react-native-paper';
 import Animated, { SlideInRight } from 'react-native-reanimated';
@@ -173,7 +174,7 @@ export default function ContactListItem({
   const primaryPhone = contact.phoneNumbers?.find((p: any) => p.isPrimary)?.number || 
                       contact.phoneNumbers?.[0]?.number || '';
 
-  const handleCall = () => {
+  const handleCall = async () => {
     if (primaryPhone) {
       // Enhanced haptic feedback for VIP contacts
       if (contact.isVIP) {
@@ -181,14 +182,65 @@ export default function ContactListItem({
       } else {
         Vibration.vibrate(50);
       }
-      Linking.openURL(`tel:${primaryPhone}`);
+      
+      try {
+        const canOpen = await Linking.canOpenURL(`tel:${primaryPhone}`);
+        if (canOpen) {
+          await Linking.openURL(`tel:${primaryPhone}`);
+        } else {
+          // Fallback: show alert with phone number
+          Alert.alert(
+            'Phone Dialer Not Available',
+            `Phone number: ${primaryPhone}\n\nThis device doesn't support phone calls or you're running in a simulator.`,
+            [
+              { text: 'Copy Number', onPress: () => Clipboard.setString(primaryPhone) },
+              { text: 'OK', style: 'cancel' }
+            ]
+          );
+        }
+      } catch (error) {
+        console.error('Error opening phone dialer:', error);
+        Alert.alert(
+          'Cannot Open Phone Dialer',
+          `Phone number: ${primaryPhone}\n\nThis feature is not available on this device or simulator.`,
+          [
+            { text: 'Copy Number', onPress: () => Clipboard.setString(primaryPhone) },
+            { text: 'OK', style: 'cancel' }
+          ]
+        );
+      }
     }
   };
 
-  const handleMessage = () => {
+  const handleMessage = async () => {
     if (primaryPhone) {
       Vibration.vibrate(50);
-      Linking.openURL(`sms:${primaryPhone}`);
+      try {
+        const canOpen = await Linking.canOpenURL(`sms:${primaryPhone}`);
+        if (canOpen) {
+          await Linking.openURL(`sms:${primaryPhone}`);
+        } else {
+          // Fallback: show alert with phone number
+          Alert.alert(
+            'SMS Not Available',
+            `Phone number: ${primaryPhone}\n\nThis device doesn't support SMS or you're running in a simulator.`,
+            [
+              { text: 'Copy Number', onPress: () => Clipboard.setString(primaryPhone) },
+              { text: 'OK', style: 'cancel' }
+            ]
+          );
+        }
+      } catch (error) {
+        console.error('Error opening SMS:', error);
+        Alert.alert(
+          'Cannot Open SMS',
+          `Phone number: ${primaryPhone}\n\nThis feature is not available on this device or simulator.`,
+          [
+            { text: 'Copy Number', onPress: () => Clipboard.setString(primaryPhone) },
+            { text: 'OK', style: 'cancel' }
+          ]
+        );
+      }
     }
   };
 

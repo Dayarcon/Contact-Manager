@@ -25,6 +25,8 @@ export default function RootLayout() {
             <Stack.Screen name="add-contact" options={{ headerShown: false }} />
             <Stack.Screen name="contact-details" options={{ headerShown: false }} />
             <Stack.Screen name="settings" options={{ headerShown: false }} />
+            <Stack.Screen name="vip-settings" options={{ headerShown: false }} />
+            <Stack.Screen name="automation-settings" options={{ headerShown: false }} />
             <Stack.Screen name="duplicates" options={{ headerShown: false }} />
           </Stack>
           <StatusBar style="dark" />

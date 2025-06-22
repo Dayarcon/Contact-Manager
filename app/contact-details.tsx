@@ -333,68 +333,95 @@ export default function ContactDetailsScreen() {
 
   // Action handling functions
   const handleCall = async () => {
-    if (!contact || !primaryPhone) {
-      Alert.alert('No Phone Number', 'This contact doesn\'t have a phone number.');
-      return;
-    }
-    
-    try {
-      const phoneNumber = primaryPhone.number.replace(/\s/g, '');
-      const url = `tel:${phoneNumber}`;
-      const supported = await Linking.canOpenURL(url);
-      
-      if (supported) {
-        await Linking.openURL(url);
-        addHistoryEvent?.(contact.id, { type: 'call', detail: 'Called contact', date: new Date().toISOString() });
-      } else {
-        Alert.alert('Error', 'Cannot open phone dialer on this device.');
+    if (primaryPhone) {
+      try {
+        const canOpen = await Linking.canOpenURL(`tel:${primaryPhone.number}`);
+        if (canOpen) {
+          await Linking.openURL(`tel:${primaryPhone.number}`);
+        } else {
+          // Fallback: show alert with phone number
+          Alert.alert(
+            'Phone Dialer Not Available',
+            `Phone number: ${primaryPhone.number}\n\nThis device doesn't support phone calls or you're running in a simulator.`,
+            [
+              { text: 'Copy Number', onPress: () => Clipboard.setString(primaryPhone.number) },
+              { text: 'OK', style: 'cancel' }
+            ]
+          );
+        }
+      } catch (error) {
+        console.error('Error opening phone dialer:', error);
+        Alert.alert(
+          'Cannot Open Phone Dialer',
+          `Phone number: ${primaryPhone.number}\n\nThis feature is not available on this device or simulator.`,
+          [
+            { text: 'Copy Number', onPress: () => Clipboard.setString(primaryPhone.number) },
+            { text: 'OK', style: 'cancel' }
+          ]
+        );
       }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to open phone dialer.');
     }
   };
 
   const handleMessage = async () => {
-    if (!contact || !primaryPhone) {
-      Alert.alert('No Phone Number', 'This contact doesn\'t have a phone number.');
-      return;
-    }
-    
-    try {
-      const phoneNumber = primaryPhone.number.replace(/\s/g, '');
-      const url = `sms:${phoneNumber}`;
-      const supported = await Linking.canOpenURL(url);
-      
-      if (supported) {
-        await Linking.openURL(url);
-        addHistoryEvent?.(contact.id, { type: 'message', detail: 'Opened messaging app', date: new Date().toISOString() });
-      } else {
-        Alert.alert('Error', 'Cannot open messaging app on this device.');
+    if (primaryPhone) {
+      try {
+        const canOpen = await Linking.canOpenURL(`sms:${primaryPhone.number}`);
+        if (canOpen) {
+          await Linking.openURL(`sms:${primaryPhone.number}`);
+        } else {
+          // Fallback: show alert with phone number
+          Alert.alert(
+            'SMS Not Available',
+            `Phone number: ${primaryPhone.number}\n\nThis device doesn't support SMS or you're running in a simulator.`,
+            [
+              { text: 'Copy Number', onPress: () => Clipboard.setString(primaryPhone.number) },
+              { text: 'OK', style: 'cancel' }
+            ]
+          );
+        }
+      } catch (error) {
+        console.error('Error opening SMS:', error);
+        Alert.alert(
+          'Cannot Open SMS',
+          `Phone number: ${primaryPhone.number}\n\nThis feature is not available on this device or simulator.`,
+          [
+            { text: 'Copy Number', onPress: () => Clipboard.setString(primaryPhone.number) },
+            { text: 'OK', style: 'cancel' }
+          ]
+        );
       }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to open messaging app.');
     }
   };
 
   const handleEmail = async () => {
-    if (!contact || !primaryEmail) {
-      Alert.alert('No Email', 'This contact doesn\'t have an email address.');
-      return;
-    }
-    
-    try {
-      const email = primaryEmail.email;
-      const url = `mailto:${email}`;
-      const supported = await Linking.canOpenURL(url);
-      
-      if (supported) {
-        await Linking.openURL(url);
-        addHistoryEvent?.(contact.id, { type: 'email', detail: 'Opened email app', date: new Date().toISOString() });
-      } else {
-        Alert.alert('Error', 'Cannot open email app on this device.');
+    if (primaryEmail) {
+      try {
+        const canOpen = await Linking.canOpenURL(`mailto:${primaryEmail.email}`);
+        if (canOpen) {
+          await Linking.openURL(`mailto:${primaryEmail.email}`);
+        } else {
+          // Fallback: show alert with email
+          Alert.alert(
+            'Email Not Available',
+            `Email: ${primaryEmail.email}\n\nThis device doesn't support email or you're running in a simulator.`,
+            [
+              { text: 'Copy Email', onPress: () => Clipboard.setString(primaryEmail.email) },
+              { text: 'OK', style: 'cancel' }
+            ]
+          );
+        }
+      } catch (error) {
+        console.error('Error opening email:', error);
+        Alert.alert(
+          'Cannot Open Email',
+          `Email: ${primaryEmail.email}\n\nThis feature is not available on this device or simulator.`,
+          [
+            { text: 'Copy Email', onPress: () => Clipboard.setString(primaryEmail.email) },
+            { text: 'OK', style: 'cancel' }
+          ]
+        );
       }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to open email app.');
     }
   };
 

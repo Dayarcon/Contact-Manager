@@ -140,7 +140,7 @@ const StatLabel = styled(Text)`
   text-align: center;
 `;
 
-export default function VIPSettingsScreen() {
+function VIPSettingsScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { contacts } = useContacts();
@@ -430,4 +430,6 @@ export default function VIPSettingsScreen() {
       </ContentScroll>
     </Container>
   );
-} 
+}
+
+export default VIPSettingsScreen; 

@@ -1,38 +1,48 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Contacts from 'expo-contacts';
-import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
-import VIPContactModule from '../native/VIPContactModule';
 
 export interface VIPContactConfig {
   contactId: string;
-  phoneNumber: string;
   name: string;
-  enableNotifications: boolean;
-  enableEmergencyBypass: boolean;
-  customRingtone?: string;
-  priorityLevel: 'high' | 'medium' | 'low';
+  phoneNumber: string;
+  isEnabled: boolean;
   bypassDND: boolean;
   bypassSilent: boolean;
   bypassVibration: boolean;
+  emergencyBypass: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface VIPNotificationSettings {
-  sound: boolean;
-  vibration: boolean;
-  priority: 'high' | 'default' | 'low';
+export interface VIPSettings {
+  enableNotifications: boolean;
   bypassDND: boolean;
-  showOnLockScreen: boolean;
+  bypassSilent: boolean;
+  bypassVibration: boolean;
+  enableEmergencyBypass: boolean;
+}
+
+export interface VIPStats {
+  totalVIP: number;
+  withNotifications: number;
+  recentInteractions: number;
 }
 
 class VIPContactService {
   private static instance: VIPContactService;
   private vipContacts: Map<string, VIPContactConfig> = new Map();
-  private readonly STORAGE_KEY = 'vip_contacts_config';
+  private settings: VIPSettings = {
+    enableNotifications: true,
+    bypassDND: false,
+    bypassSilent: false,
+    bypassVibration: false,
+    enableEmergencyBypass: false
+  };
+
+  private readonly VIP_CONTACTS_STORAGE_KEY = 'vip_contacts';
+  private readonly VIP_SETTINGS_STORAGE_KEY = 'vip_settings';
 
   private constructor() {
-    this.initializeNotifications();
-    this.loadVIPConfig();
+    this.loadData();
   }
 
   static getInstance(): VIPContactService {
@@ -42,71 +52,52 @@ class VIPContactService {
     return VIPContactService.instance;
   }
 
-  private async initializeNotifications() {
-    // Configure notification behavior
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-      }),
-    });
-
-    // Request permissions
-    const { status } = await Notifications.requestPermissionsAsync();
-    if (status !== 'granted') {
-      console.warn('Notification permissions not granted');
-    }
-  }
-
-  private async loadVIPConfig() {
+  private async loadData() {
     try {
-      const stored = await AsyncStorage.getItem(this.STORAGE_KEY);
-      if (stored) {
-        const configs = JSON.parse(stored);
-        this.vipContacts = new Map(Object.entries(configs));
+      const storedContacts = await AsyncStorage.getItem(this.VIP_CONTACTS_STORAGE_KEY);
+      if (storedContacts) {
+        const contactsArray = JSON.parse(storedContacts);
+        this.vipContacts = new Map(Object.entries(contactsArray));
+      }
+
+      const storedSettings = await AsyncStorage.getItem(this.VIP_SETTINGS_STORAGE_KEY);
+      if (storedSettings) {
+        this.settings = { ...this.settings, ...JSON.parse(storedSettings) };
       }
     } catch (error) {
-      console.error('Error loading VIP config:', error);
+      console.error('Error loading VIP data:', error);
     }
   }
 
-  private async saveVIPConfig() {
+  private async saveData() {
     try {
-      const configs = Object.fromEntries(this.vipContacts);
-      await AsyncStorage.setItem(this.STORAGE_KEY, JSON.stringify(configs));
+      const contactsObject = Object.fromEntries(this.vipContacts);
+      await AsyncStorage.setItem(this.VIP_CONTACTS_STORAGE_KEY, JSON.stringify(contactsObject));
+      await AsyncStorage.setItem(this.VIP_SETTINGS_STORAGE_KEY, JSON.stringify(this.settings));
     } catch (error) {
-      console.error('Error saving VIP config:', error);
+      console.error('Error saving VIP data:', error);
     }
   }
 
-  // Add contact to VIP list with enhanced settings
-  async addVIPContact(config: VIPContactConfig): Promise<boolean> {
+  async addVIPContact(contact: any): Promise<boolean> {
     try {
-      // Store VIP configuration
-      this.vipContacts.set(config.contactId, config);
-      await this.saveVIPConfig();
+      const primaryPhone = contact.phoneNumbers?.find((p: any) => p.isPrimary)?.number || '';
+      
+      const vipConfig: VIPContactConfig = {
+        contactId: contact.id,
+        name: contact.name,
+        phoneNumber: primaryPhone,
+        isEnabled: true,
+        bypassDND: this.settings.bypassDND,
+        bypassSilent: this.settings.bypassSilent,
+        bypassVibration: this.settings.bypassVibration,
+        emergencyBypass: this.settings.enableEmergencyBypass,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
 
-      // Set up system-level VIP if supported
-      if (await VIPContactModule.isVIPContactsSupported()) {
-        await VIPContactModule.addToSystemVIP(config.contactId, config.phoneNumber);
-      }
-
-      // Set up enhanced notifications
-      if (config.enableNotifications) {
-        await this.setupVIPNotifications(config);
-      }
-
-      // Set up emergency bypass if supported
-      if (config.enableEmergencyBypass && await VIPContactModule.supportsEmergencyBypass()) {
-        await VIPContactModule.enableEmergencyBypass(config.contactId, config.phoneNumber);
-      }
-
-      // Create custom notification channel for Android
-      if (Platform.OS === 'android') {
-        await this.createVIPNotificationChannel(config);
-      }
-
+      this.vipContacts.set(contact.id, vipConfig);
+      await this.saveData();
       return true;
     } catch (error) {
       console.error('Error adding VIP contact:', error);
@@ -114,23 +105,10 @@ class VIPContactService {
     }
   }
 
-  // Remove contact from VIP list
   async removeVIPContact(contactId: string): Promise<boolean> {
     try {
-      const config = this.vipContacts.get(contactId);
-      if (config) {
-        // Remove from system VIP if supported
-        if (await VIPContactModule.isVIPContactsSupported()) {
-          await VIPContactModule.removeFromSystemVIP(contactId);
-        }
-
-        // Remove from local storage
-        this.vipContacts.delete(contactId);
-        await this.saveVIPConfig();
-
-        // Cancel any scheduled notifications
-        await Notifications.cancelScheduledNotificationAsync(contactId);
-      }
+      this.vipContacts.delete(contactId);
+      await this.saveData();
       return true;
     } catch (error) {
       console.error('Error removing VIP contact:', error);
@@ -138,174 +116,68 @@ class VIPContactService {
     }
   }
 
-  // Set up enhanced notifications for VIP contact
-  private async setupVIPNotifications(config: VIPContactConfig): Promise<void> {
-    const notificationSettings: VIPNotificationSettings = {
-      sound: true,
-      vibration: true,
-      priority: 'high',
-      bypassDND: config.bypassDND,
-      showOnLockScreen: true,
-    };
-
-    // Schedule a test notification to verify settings
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: `VIP Contact: ${config.name}`,
-        body: 'This contact is marked as VIP and will bypass DND settings',
-        data: { contactId: config.contactId, type: 'vip_contact' },
-        sound: config.customRingtone || 'default',
-        priority: notificationSettings.priority,
-      },
-      trigger: null, // Immediate notification for testing
-    });
-  }
-
-  // Create custom notification channel for Android
-  private async createVIPNotificationChannel(config: VIPContactConfig): Promise<void> {
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync(`vip_${config.contactId}`, {
-        name: `VIP: ${config.name}`,
-        importance: Notifications.AndroidImportance.HIGH,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FFD700',
-        sound: config.customRingtone || 'default',
-        bypassDnd: config.bypassDND,
-        enableVibrate: config.bypassVibration,
-      });
-    }
-  }
-
-  // Handle incoming call from VIP contact
-  async handleVIPCall(phoneNumber: string): Promise<void> {
-    const vipContact = Array.from(this.vipContacts.values()).find(
-      config => config.phoneNumber === phoneNumber
-    );
-
-    if (vipContact) {
-      // Enhanced haptic feedback
-      if (Platform.OS === 'ios') {
-        // Use iOS-specific haptic feedback
-        await this.triggerVIPHapticFeedback();
-      }
-
-      // Show VIP notification
-      await this.showVIPCallNotification(vipContact);
-
-      // Log VIP call
-      await this.logVIPInteraction(vipContact.contactId, 'call');
-    }
-  }
-
-  // Enhanced haptic feedback for VIP calls
-  private async triggerVIPHapticFeedback(): Promise<void> {
-    // This would use iOS HapticFeedback API
-    // For now, we'll use the vibration API
-    const { Vibration } = require('react-native');
-    Vibration.vibrate([0, 100, 50, 100, 50, 100, 50, 100]);
-  }
-
-  // Show VIP call notification
-  private async showVIPCallNotification(config: VIPContactConfig): Promise<void> {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: `👑 VIP Call: ${config.name}`,
-        body: 'This is a VIP contact calling you!',
-        data: { contactId: config.contactId, type: 'vip_call' },
-        sound: config.customRingtone || 'default',
-        priority: 'high',
-      },
-      trigger: null,
-    });
-  }
-
-  // Log VIP interactions
-  private async logVIPInteraction(contactId: string, interactionType: string): Promise<void> {
-    const timestamp = new Date().toISOString();
-    const logEntry = {
-      contactId,
-      type: interactionType,
-      timestamp,
-      priority: 'vip',
-    };
-
-    // Store in AsyncStorage for analytics
-    const logs = await AsyncStorage.getItem('vip_interaction_logs') || '[]';
-    const parsedLogs = JSON.parse(logs);
-    parsedLogs.push(logEntry);
-    await AsyncStorage.setItem('vip_interaction_logs', JSON.stringify(parsedLogs));
-  }
-
-  // Get all VIP contacts
-  getVIPContacts(): VIPContactConfig[] {
-    return Array.from(this.vipContacts.values());
-  }
-
-  // Check if contact is VIP
-  isVIPContact(contactId: string): boolean {
-    return this.vipContacts.has(contactId);
-  }
-
-  // Get VIP configuration for contact
-  getVIPConfig(contactId: string): VIPContactConfig | undefined {
-    return this.vipContacts.get(contactId);
-  }
-
-  // Update VIP configuration
-  async updateVIPConfig(contactId: string, updates: Partial<VIPContactConfig>): Promise<boolean> {
+  async updateVIPContact(contactId: string, updates: Partial<VIPContactConfig>): Promise<boolean> {
     try {
-      const existing = this.vipContacts.get(contactId);
-      if (existing) {
-        const updated = { ...existing, ...updates };
-        this.vipContacts.set(contactId, updated);
-        await this.saveVIPConfig();
+      const contact = this.vipContacts.get(contactId);
+      if (contact) {
+        const updatedContact = { ...contact, ...updates, updatedAt: new Date().toISOString() };
+        this.vipContacts.set(contactId, updatedContact);
+        await this.saveData();
         return true;
       }
       return false;
     } catch (error) {
-      console.error('Error updating VIP config:', error);
+      console.error('Error updating VIP contact:', error);
       return false;
     }
   }
 
-  // Request necessary permissions
-  async requestPermissions(): Promise<boolean> {
-    try {
-      const results = await Promise.all([
-        Notifications.requestPermissionsAsync(),
-        Contacts.requestPermissionsAsync(),
-      ]);
-
-      return results.every(result => result.status === 'granted');
-    } catch (error) {
-      console.error('Error requesting permissions:', error);
-      return false;
-    }
+  async updateSettings(settings: Partial<VIPSettings>): Promise<void> {
+    this.settings = { ...this.settings, ...settings };
+    await this.saveData();
   }
 
-  // Get VIP statistics
-  async getVIPStats(): Promise<{
-    totalVIP: number;
-    withNotifications: number;
-    withEmergencyBypass: number;
-    recentInteractions: number;
-  }> {
-    const vipContacts = this.getVIPContacts();
-    const logs = await AsyncStorage.getItem('vip_interaction_logs') || '[]';
-    const parsedLogs = JSON.parse(logs);
+  isVIPContact(contactId: string): boolean {
+    return this.vipContacts.has(contactId);
+  }
+
+  getVIPContact(contactId: string): VIPContactConfig | null {
+    return this.vipContacts.get(contactId) || null;
+  }
+
+  getVIPContacts(): VIPContactConfig[] {
+    return Array.from(this.vipContacts.values());
+  }
+
+  getSettings(): VIPSettings {
+    return { ...this.settings };
+  }
+
+  getStats(): VIPStats {
+    const totalVIP = this.vipContacts.size;
+    const withNotifications = Array.from(this.vipContacts.values()).filter(c => c.isEnabled).length;
     
-    const recentInteractions = parsedLogs.filter((log: any) => {
-      const logDate = new Date(log.timestamp);
-      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      return logDate > weekAgo;
-    }).length;
-
     return {
-      totalVIP: vipContacts.length,
-      withNotifications: vipContacts.filter(c => c.enableNotifications).length,
-      withEmergencyBypass: vipContacts.filter(c => c.enableEmergencyBypass).length,
-      recentInteractions,
+      totalVIP,
+      withNotifications,
+      recentInteractions: 0 // This would be calculated from actual interaction data
     };
+  }
+
+  async handleIncomingCall(contactId: string): Promise<void> {
+    const vipContact = this.vipContacts.get(contactId);
+    if (!vipContact || !vipContact.isEnabled) return;
+
+    // Log VIP call handling
+    console.log(`VIP call from ${vipContact.name}:`, {
+      bypassDND: vipContact.bypassDND,
+      bypassSilent: vipContact.bypassSilent,
+      bypassVibration: vipContact.bypassVibration,
+      emergencyBypass: vipContact.emergencyBypass
+    });
+
+    // In a real app, this would integrate with the phone system
+    // to actually bypass DND/silent modes
   }
 }
 

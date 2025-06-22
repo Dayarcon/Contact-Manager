@@ -1,5 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import SmartRemindersService from '../services/SmartRemindersService';
+import AutoTaggingService from '../services/AutoTaggingService';
+import ScheduledMessagingService from '../services/ScheduledMessagingService';
+import GeoLocationService from '../services/GeoLocationService';
 
 export type PhoneNumber = {
   id: string;
@@ -62,6 +66,13 @@ interface ContactsContextType {
   getFavoriteContacts: () => Contact[];
   getVIPContacts: () => Contact[];
   getRecentContacts: (days?: number) => Contact[];
+  runBatchAutomation: () => Promise<void>;
+  getAutomationServices: () => {
+    remindersService: SmartRemindersService;
+    taggingService: AutoTaggingService;
+    messagingService: ScheduledMessagingService;
+    geoService: GeoLocationService;
+  };
 }
 
 const ContactsContext = createContext<ContactsContextType | undefined>(undefined);
@@ -220,8 +231,14 @@ const mockContacts: Contact[] = [
 ];
 
 export function ContactsProvider({ children }: { children: ReactNode }) {
-  const [contacts, setContacts] = useState<Contact[]>(mockContacts);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Initialize automation services
+  const [remindersService] = useState(() => SmartRemindersService.getInstance());
+  const [taggingService] = useState(() => AutoTaggingService.getInstance());
+  const [messagingService] = useState(() => ScheduledMessagingService.getInstance());
+  const [geoService] = useState(() => GeoLocationService.getInstance());
 
   // Load contacts from AsyncStorage on mount
   useEffect(() => {
@@ -258,38 +275,44 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
   }, [contacts, isLoading]);
 
   const addContact = (contact: Omit<Contact, 'id' | 'isFavorite' | 'isVIP' | 'history' | 'createdAt' | 'updatedAt'>) => {
-    const now = new Date().toISOString();
-    setContacts(prev => [
-      { 
-        ...contact, 
-        id: Date.now().toString(), 
-        isFavorite: false, 
-        isVIP: false,
-        history: [], 
-        notes: contact.notes || '',
-        createdAt: now,
-        updatedAt: now
-      },
-      ...prev,
-    ]);
+    const newContact: Contact = {
+      ...contact,
+      id: Date.now().toString(),
+      isFavorite: false,
+      isVIP: false,
+      history: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    setContacts(prev => {
+      const updated = [...prev, newContact];
+      saveContacts(updated);
+      
+      // Trigger automation features
+      triggerAutomationFeatures(newContact);
+      
+      return updated;
+    });
   };
 
   const editContact = (id: string, updated: Partial<Contact>) => {
-    setContacts(prev =>
-      prev.map(c =>
-        c.id === id
-          ? {
-              ...c,
-              ...updated,
-              updatedAt: new Date().toISOString(),
-              history: [
-                { type: 'edit', detail: 'Contact edited', date: new Date().toISOString() },
-                ...(c.history || []),
-              ],
-            }
-          : c
-      )
-    );
+    setContacts(prev => {
+      const updatedContacts = prev.map(contact => 
+        contact.id === id 
+          ? { ...contact, ...updated, updatedAt: new Date().toISOString() }
+          : contact
+      );
+      saveContacts(updatedContacts);
+      
+      // Trigger automation features for updated contact
+      const updatedContact = updatedContacts.find(c => c.id === id);
+      if (updatedContact) {
+        triggerAutomationFeatures(updatedContact);
+      }
+      
+      return updatedContacts;
+    });
   };
 
   const deleteContact = (id: string) => {
@@ -546,6 +569,65 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
     return contacts.filter(c => new Date(c.updatedAt) > cutoff);
   };
 
+  // Automation features integration
+  const triggerAutomationFeatures = async (contact: Contact) => {
+    try {
+      // 1. Auto-tagging
+      const suggestedTags = await taggingService.autoTagContact(contact);
+      if (suggestedTags.length > 0) {
+        const updatedLabels = [...(contact.labels || []), ...suggestedTags];
+        editContact(contact.id, { labels: updatedLabels });
+      }
+
+      // 2. Generate reminders for birthdays/anniversaries
+      await remindersService.generateRemindersFromContacts([contact]);
+
+      // 3. Generate scheduled messages
+      await messagingService.generateBirthdayMessages([contact]);
+      await messagingService.generateAnniversaryMessages([contact]);
+
+      // 4. Geo-location features (if address is provided)
+      if (contact.address) {
+        // In a real app, you would geocode the address here
+        // For now, we'll just log it
+        console.log(`Contact ${contact.name} has address: ${contact.address}`);
+      }
+    } catch (error) {
+      console.error('Error triggering automation features:', error);
+    }
+  };
+
+  // Batch automation for all contacts
+  const runBatchAutomation = async () => {
+    try {
+      // Generate reminders for all contacts
+      await remindersService.generateRemindersFromContacts(contacts);
+      
+      // Generate scheduled messages
+      await messagingService.generateBirthdayMessages(contacts);
+      await messagingService.generateAnniversaryMessages(contacts);
+      
+      // Auto-tag all contacts
+      for (const contact of contacts) {
+        const suggestedTags = await taggingService.autoTagContact(contact);
+        if (suggestedTags.length > 0) {
+          const updatedLabels = [...(contact.labels || []), ...suggestedTags];
+          editContact(contact.id, { labels: updatedLabels });
+        }
+      }
+    } catch (error) {
+      console.error('Error running batch automation:', error);
+    }
+  };
+
+  // Get automation services for use in components
+  const getAutomationServices = () => ({
+    remindersService,
+    taggingService,
+    messagingService,
+    geoService
+  });
+
   // Create the context value with all functions properly defined
   const contextValue: ContactsContextType = {
     contacts,
@@ -565,7 +647,9 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
     getContactsByGroup,
     getFavoriteContacts,
     getVIPContacts,
-    getRecentContacts
+    getRecentContacts,
+    runBatchAutomation,
+    getAutomationServices
   };
 
   return (
@@ -598,7 +682,14 @@ export function useContacts() {
       getContactsByGroup: () => [],
       getFavoriteContacts: () => [],
       getVIPContacts: () => [],
-      getRecentContacts: () => []
+      getRecentContacts: () => [],
+      runBatchAutomation: () => Promise.resolve(),
+      getAutomationServices: () => ({
+        remindersService: {} as SmartRemindersService,
+        taggingService: {} as AutoTaggingService,
+        messagingService: {} as ScheduledMessagingService,
+        geoService: {} as GeoLocationService
+      })
     };
   }
   return context;

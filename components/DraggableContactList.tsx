@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dimensions, PanGestureHandler, View } from 'react-native';
+import { Dimensions, View } from 'react-native';
 import { Avatar, Card, Chip, IconButton, Text, useTheme } from 'react-native-paper';
 import Animated, {
     runOnJS,
@@ -70,7 +70,7 @@ const DragHandle = styled.View`
 
 const DropZone = styled.View<{ isActive: boolean }>`
   height: 4px;
-  background-color: ${props => props.isActive ? '#6200ee' : 'transparent'};
+  background-color: ${(props: { isActive: boolean }) => props.isActive ? '#6200ee' : 'transparent'};
   margin: 4px 0;
   border-radius: 2px;
   transition: background-color 0.2s ease;
@@ -230,86 +230,84 @@ const DraggableContactItem = ({
 
   return (
     <Animated.View style={animatedStyle}>
-      <PanGestureHandler onGestureEvent={panGestureEvent} enabled={!isDragging}>
-        <Animated.View>
-          <ContactCard>
-            <ContactContent>
-              <DragHandle>
+      <Animated.View>
+        <ContactCard>
+          <ContactContent>
+            <DragHandle>
+              <IconButton
+                icon="drag"
+                size={20}
+                iconColor="#666666"
+                style={{ margin: 0 }}
+              />
+            </DragHandle>
+            
+            {contact.imageUri ? (
+              <Avatar.Image 
+                size={48} 
+                source={{ uri: contact.imageUri }}
+                style={{ 
+                  elevation: 3,
+                  shadowColor: '#000',
+                  shadowOpacity: 0.2,
+                  shadowRadius: 6
+                }}
+              />
+            ) : (
+              <Avatar.Text 
+                size={48} 
+                label={initials}
+                color="white"
+                style={{ 
+                  backgroundColor: avatarColor,
+                  elevation: 3,
+                  shadowColor: '#000',
+                  shadowOpacity: 0.2,
+                  shadowRadius: 6
+                }}
+              />
+            )}
+            
+            <ContactInfo>
+              <ContactName>{contact.name}</ContactName>
+              <ContactSubtitle>{getContactSubtitle()}</ContactSubtitle>
+              {contact.group && (
+                <Chip 
+                  style={{ 
+                    height: 20, 
+                    alignSelf: 'flex-start',
+                    marginTop: 4
+                  }}
+                  textStyle={{ fontSize: 10 }}
+                >
+                  {contact.group}
+                </Chip>
+              )}
+            </ContactInfo>
+            
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              {contact.isFavorite && (
                 <IconButton
-                  icon="drag"
+                  icon="star"
+                  iconColor="#ff6b35"
                   size={20}
-                  iconColor="#666666"
-                  style={{ margin: 0 }}
-                />
-              </DragHandle>
-              
-              {contact.imageUri ? (
-                <Avatar.Image 
-                  size={48} 
-                  source={{ uri: contact.imageUri }}
-                  style={{ 
-                    elevation: 3,
-                    shadowColor: '#000',
-                    shadowOpacity: 0.2,
-                    shadowRadius: 6
-                  }}
-                />
-              ) : (
-                <Avatar.Text 
-                  size={48} 
-                  label={initials}
-                  color="white"
-                  style={{ 
-                    backgroundColor: avatarColor,
-                    elevation: 3,
-                    shadowColor: '#000',
-                    shadowOpacity: 0.2,
-                    shadowRadius: 6
-                  }}
+                  onPress={() => {/* Handle favorite toggle */}}
                 />
               )}
-              
-              <ContactInfo>
-                <ContactName>{contact.name}</ContactName>
-                <ContactSubtitle>{getContactSubtitle()}</ContactSubtitle>
-                {contact.group && (
-                  <Chip 
-                    style={{ 
-                      height: 20, 
-                      alignSelf: 'flex-start',
-                      marginTop: 4
-                    }}
-                    textStyle={{ fontSize: 10 }}
-                  >
-                    {contact.group}
-                  </Chip>
-                )}
-              </ContactInfo>
-              
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                {contact.isFavorite && (
-                  <IconButton
-                    icon="star"
-                    iconColor="#ff6b35"
-                    size={20}
-                    onPress={() => {/* Handle favorite toggle */}}
-                  />
-                )}
-                <IconButton
-                  icon="pencil"
-                  size={20}
-                  onPress={() => onContactEdit(contact.id)}
-                />
-                <IconButton
-                  icon="dots-vertical"
-                  size={20}
-                  onPress={() => onContactPress(contact)}
-                />
-              </View>
-            </ContactContent>
-          </ContactCard>
-        </Animated.View>
-      </PanGestureHandler>
+              <IconButton
+                icon="pencil"
+                size={20}
+                onPress={() => onContactEdit(contact.id)}
+              />
+              <IconButton
+                icon="dots-vertical"
+                size={20}
+                onPress={() => onContactPress(contact)}
+              />
+            </View>
+          </ContactContent>
+        </ContactCard>
+      </Animated.View>
     </Animated.View>
   );
 };

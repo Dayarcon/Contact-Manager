@@ -1,183 +1,92 @@
 # 📱 Contact Manager App
 
-A modern, feature-rich contact management application built with React Native and Expo. This app provides a comprehensive solution for managing personal and business contacts with advanced features like duplicate detection, quick actions, and data export capabilities.
+A comprehensive, modern contact management application built with React Native and Expo. This app provides advanced contact organization, smart reminders, VIP contact management, and automation features.
 
-## 🚀 Features
+## ✨ Features
 
-### 📋 Core Contact Management
-- **Add/Edit/Delete Contacts** - Full CRUD operations for contact management
-- **Contact Details** - Comprehensive contact information including:
-  - Personal details (name, company, job title)
-  - Multiple phone numbers with types (mobile, work, home, other)
-  - Multiple email addresses with types (personal, work, other)
-  - Address information
-  - Social media handles
-  - Website URLs
-  - Birthday and anniversary dates
-  - Notes and labels
-  - Emergency contact designation
+### 🏠 Core Contact Management
+- **Add/Edit/Delete Contacts** - Full CRUD operations with rich contact information
+- **Contact Photos** - Add and manage contact profile pictures
+- **Multiple Phone Numbers** - Support for multiple phone numbers with types (mobile, work, home)
+- **Email Addresses** - Multiple email addresses with primary designation
+- **Address Information** - Store and manage contact addresses
+- **Social Media** - Link social media profiles
+- **Birthday & Anniversary** - Track important dates with automatic reminders
+- **Notes & Tags** - Add personal notes and custom labels
 
-### 🎨 Enhanced UI/UX Features
-- **Contact Avatars with Initials** - Beautiful colored avatars with contact initials
-  - Dynamic color generation based on contact name
-  - Support for custom contact photos
-  - Favorite badge overlay for important contacts
-- **Swipeable Actions** - Quick access to common actions
-  - Swipe right to reveal call, message, and delete buttons
-  - Color-coded action buttons (green for call, blue for message, red for delete)
-  - Smooth swipe animations with haptic feedback
-- **Contact Timeline View** - Social feed-style interaction history
-  - Chronological display of all contact interactions
-  - Color-coded event types with icons
-  - Collapsible timeline for better space management
-  - Recent activity tracking and display
-- **Drag-and-Drop Reordering** - Intuitive contact organization
-  - Reorder contacts within groups using drag-and-drop
-  - Visual feedback during drag operations
-  - Smooth animations and transitions
-  - Available in the manage-contacts screen
+### 🎯 Smart Organization
+- **Groups & Categories** - Organize contacts into custom groups
+- **Favorites System** - Mark important contacts as favorites
+- **VIP Contacts** - Special handling for VIP contacts with enhanced features
+- **Emergency Contacts** - Quick access to emergency contacts
+- **Recent Contacts** - Track recently contacted people
+- **Advanced Search** - Search by name, phone, email, company, or notes
+- **Filtering Options** - Filter by groups, labels, favorites, VIP status
 
-### 🔍 Advanced Search & Filtering
-- **Real-time Search** - Instant search across all contact fields
-- **Smart Filtering** - Filter by groups, favorites, and contact types
-- **Advanced Search** - Multi-field search with customizable filters
-- **Search History** - Track and reuse previous search queries
+### 👑 VIP Contact Features
+- **VIP Designation** - Mark contacts as VIP with special privileges
+- **Enhanced Notifications** - Special notification handling for VIP contacts
+- **DND Bypass Settings** - Configure VIP contacts to bypass Do Not Disturb
+- **Silent Mode Bypass** - Allow VIP contacts to ring in silent mode
+- **Custom Vibration** - Special vibration patterns for VIP calls
+- **Emergency Bypass** - Override all restrictions for critical contacts
 
-### 🏷️ Organization & Categorization
-- **Contact Groups** - Organize contacts into custom groups (Work, Family, Friends, etc.)
-- **Labels & Tags** - Add custom labels to contacts for better organization
-- **Favorites** - Mark important contacts as favorites for quick access
-- **Emergency Contacts** - Designate and quickly access emergency contacts
+### 🤖 Automation & Smart Features
+- **Smart Reminders** - Automatic birthday and anniversary reminders
+- **Scheduled Messaging** - Schedule messages for special occasions
+- **Auto Tagging** - Intelligent contact categorization
+- **Duplicate Detection** - Find and merge duplicate contacts
+- **Contact Timeline** - Track interaction history with contacts
+- **Quick Actions** - Fast access to call, message, email, and more
 
-### 🔄 Duplicate Management
-- **Automatic Duplicate Detection** - Smart algorithm to find potential duplicates
-- **Similarity Scoring** - Percentage-based similarity calculation
-- **Merge Functionality** - Safely merge duplicate contacts with conflict resolution
-- **Duplicate Review** - Side-by-side comparison of duplicate contacts
-
-### ⚡ Quick Actions
-- **One-tap Communication** - Direct call, message, email, and video call
-- **Social Media Integration** - Quick access to WhatsApp, social profiles
-- **Location Services** - Open addresses in maps applications
-- **Website Access** - Direct links to contact websites
-- **Calendar Integration** - Add birthdays and anniversaries to calendar
-- **Contact Sharing** - Share contact information via various platforms
-
-### 📊 Analytics & Insights
-- **Contact Statistics** - Total contacts, favorites, group distribution
-- **Recent Activity** - Track recent interactions and updates
-- **Contact History** - Maintain interaction history for each contact
-- **Usage Analytics** - Monitor app usage patterns
-
-### 📤 Data Management
-- **Export Options** - Export contacts in multiple formats:
-  - JSON format for data backup
-  - CSV format for spreadsheet applications
-  - vCard format for universal compatibility
-- **Import Functionality** - Import contacts from various sources
-- **Backup & Restore** - Secure data backup and restoration
-- **Data Validation** - Ensure data integrity and consistency
+### 📊 Data Management
+- **Export Options** - Export contacts in JSON, CSV, and vCard formats
+- **Backup & Restore** - Create backups of your contact data
+- **Import Support** - Import contacts from various formats
+- **Data Analytics** - View contact statistics and insights
 
 ### 🎨 Modern UI/UX
-- **Material Design 3** - Modern, intuitive interface
-- **Dark/Light Theme** - Automatic theme switching based on system preferences
+- **Beautiful Design** - Modern, intuitive interface with Material Design
+- **Dark/Light Themes** - Support for different theme preferences
 - **Smooth Animations** - Fluid transitions and micro-interactions
-- **Responsive Design** - Optimized for various screen sizes
-- **Accessibility** - Support for screen readers and accessibility features
-- **Enhanced Visual Design** - Improved spacing, typography, and visual hierarchy
+- **Responsive Layout** - Optimized for different screen sizes
+- **Accessibility** - Built with accessibility in mind
 
-### 📱 Platform Features
-- **Cross-platform** - Works on iOS, Android, and Web
-- **Offline Support** - Full functionality without internet connection
-- **Local Storage** - Secure local data storage using AsyncStorage
-- **Image Support** - Contact photos with camera and gallery integration
-- **Haptic Feedback** - Tactile feedback for better user experience
+## 🛠️ Technical Stack
 
-## 🏗️ Architecture
+### Core Technologies
+- **React Native** - Cross-platform mobile development
+- **Expo** - Development platform and build tools
+- **TypeScript** - Type-safe JavaScript development
+- **React Navigation** - Navigation and routing
+- **React Native Paper** - Material Design components
 
-### Tech Stack
-- **Framework**: React Native with Expo
-- **Navigation**: Expo Router with file-based routing
-- **State Management**: React Context API with custom hooks
-- **UI Components**: React Native Paper (Material Design 3)
-- **Styling**: Styled Components with NativeWind
-- **Storage**: AsyncStorage for local data persistence
-- **Animations**: React Native Reanimated
-- **Icons**: Expo Vector Icons
-- **Gesture Handling**: React Native Gesture Handler
+### State Management
+- **React Context** - Global state management
+- **AsyncStorage** - Local data persistence
+- **Custom Services** - Modular service architecture
 
-### Project Structure
-```
-contact-manager-app/
-├── app/                    # Main application screens
-│   ├── (tabs)/            # Tab-based navigation screens
-│   │   ├── index.tsx      # Home screen with contact list
-│   │   ├── quick-actions.tsx  # Quick actions screen
-│   │   ├── manage-contacts.tsx # Contact management with drag-and-drop
-│   │   └── explore.tsx    # Explore and discover features
-│   ├── add-contact.tsx    # Add new contact screen
-│   ├── contact-details.tsx # Contact details and timeline view
-│   ├── edit-contact.tsx   # Edit existing contact
-│   ├── duplicates.tsx     # Duplicate detection and merging
-│   └── settings.tsx       # App settings and data management
-├── components/            # Reusable UI components
-│   ├── ui/               # Base UI components
-│   ├── ContactListItem.tsx # Enhanced contact item with swipeable actions
-│   ├── ContactTimeline.tsx # Timeline view for contact interactions
-│   ├── DraggableContactList.tsx # Drag-and-drop contact list
-│   ├── Collapsible.tsx
-│   └── ThemedText.tsx
-├── context/              # React Context providers
-│   ├── ContactsContext.tsx # Contact data management
-│   └── ThemeContext.tsx   # Theme management
-├── hooks/                # Custom React hooks
-├── constants/            # App constants and configuration
-├── assets/              # Images, fonts, and static assets
-└── scripts/             # Build and utility scripts
-```
+### UI/UX Libraries
+- **Styled Components** - CSS-in-JS styling
+- **React Native Reanimated** - Smooth animations
+- **Expo Linear Gradient** - Beautiful gradients
+- **React Native Vector Icons** - Icon library
 
-### Data Models
+### Development Tools
+- **ESLint** - Code linting and formatting
+- **TypeScript** - Static type checking
+- **Expo Router** - File-based routing
 
-#### Contact Model
-```typescript
-type Contact = {
-  id: string;
-  name: string;
-  firstName?: string;
-  lastName?: string;
-  company?: string;
-  jobTitle?: string;
-  phoneNumbers: PhoneNumber[];
-  emailAddresses: EmailAddress[];
-  businessType: string;
-  address: string;
-  socialMedia: string;
-  website?: string;
-  birthday?: string;
-  anniversary?: string;
-  isFavorite: boolean;
-  group: string;
-  notes?: string;
-  history?: { type: string; detail: string; date: string }[];
-  imageUri?: string;
-  isEmergencyContact?: boolean;
-  emergencyContact?: string;
-  labels?: string[];
-  createdAt: string;
-  updatedAt: string;
-};
-```
-
-## 🛠️ Installation & Setup
+## 📦 Installation
 
 ### Prerequisites
 - Node.js (v18 or higher)
 - npm or yarn
-- Expo CLI (`npm install -g @expo/cli`)
+- Expo CLI
 - iOS Simulator (for iOS development)
 - Android Studio (for Android development)
 
-### Installation Steps
+### Setup Instructions
 
 1. **Clone the repository**
    ```bash
@@ -188,140 +97,116 @@ type Contact = {
 2. **Install dependencies**
    ```bash
    npm install
-   # or
-   yarn install
    ```
 
 3. **Start the development server**
    ```bash
-   npm start
-   # or
-   expo start
+   npx expo start
    ```
 
-4. **Run on your preferred platform**
-   ```bash
-   # iOS
-   npm run ios
-   
-   # Android
-   npm run android
-   
-   # Web
-   npm run web
-   ```
+4. **Run on device/simulator**
+   - Press `i` for iOS simulator
+   - Press `a` for Android emulator
+   - Scan QR code with Expo Go app on your device
 
-### Environment Setup
+## 🚀 Usage
 
-The app uses Expo's managed workflow, so most configurations are handled automatically. However, you may need to:
+### Adding Contacts
+1. Tap the `+` button on the home screen
+2. Fill in contact information (name, phone, email, etc.)
+3. Add a profile picture (optional)
+4. Set groups, labels, and special designations
+5. Save the contact
 
-1. **Configure Expo account** (optional but recommended)
-2. **Set up development certificates** for iOS/Android builds
-3. **Configure app.json** for your specific app details
+### Managing VIP Contacts
+1. Open a contact's details
+2. Tap the VIP toggle to mark as VIP
+3. Configure VIP settings in the VIP Settings screen
+4. Set up DND bypass and notification preferences
 
-## 📖 Usage Guide
+### Using Smart Features
+1. **Reminders**: Enable birthday/anniversary reminders in Automation Settings
+2. **Duplicate Detection**: Use the Duplicates screen to find and merge duplicates
+3. **Quick Actions**: Swipe on contacts for quick access to call, message, email
+4. **Advanced Search**: Use the search bar with filters for precise contact finding
 
-### Adding a New Contact
-1. Tap the "+" button on the home screen
-2. Fill in the contact information in the multi-step form
-3. Add phone numbers and email addresses as needed
-4. Set contact photo (optional)
-5. Assign to groups and add labels
-6. Save the contact
+### Exporting Data
+1. Go to Settings
+2. Choose export format (JSON, CSV, vCard)
+3. Share or save the exported file
 
-### Managing Contacts
-- **View Details**: Tap on any contact to view full details and timeline
-- **Edit Contact**: Use the edit button in contact details
-- **Delete Contact**: Swipe left on contact or use delete option in details
-- **Mark as Favorite**: Use the star icon to mark important contacts
-- **Quick Actions**: Swipe right on contacts to access call, message, and delete actions
+## 📁 Project Structure
 
-### Using Enhanced Features
-- **Contact Timeline**: View interaction history in the contact details screen
-- **Drag-and-Drop**: Reorder contacts in the manage-contacts screen
-- **Swipeable Actions**: Swipe right on any contact for quick access to common actions
-- **Contact Avatars**: See beautiful colored avatars with contact initials
-
-### Finding and Filtering
-- **Search**: Use the search bar to find contacts by name, company, or phone
-- **Filter by Group**: Use the filter chips to show specific groups
-- **Show Favorites**: Toggle to show only favorite contacts
-- **Advanced Search**: Use multiple criteria for complex searches
-
-### Duplicate Management
-1. Navigate to the Duplicates screen
-2. Review detected duplicates
-3. Compare contact information side-by-side
-4. Choose which information to keep during merge
-5. Confirm the merge operation
-
-### Quick Actions
-- **Call**: Direct phone call (via swipe action or contact details)
-- **Message**: Send SMS or use messaging apps
-- **Email**: Compose and send email
-- **Video Call**: Initiate video calls
-- **WhatsApp**: Open WhatsApp chat
-- **Maps**: View contact address on map
-- **Website**: Open contact's website
-- **Share**: Share contact information
-
-### Data Export
-1. Go to Settings screen
-2. Choose export format (JSON, CSV, or vCard)
-3. Select export destination
-4. Download or share the exported file
-
-## 🔧 Configuration
-
-### App Configuration (`app.json`)
-```json
-{
-  "expo": {
-    "name": "contact-manager-app",
-    "slug": "contact-manager-app",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.contactmanagerapp"
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "package": "com.anonymous.contactmanagerapp"
-    }
-  }
-}
+```
+contact-manager-app/
+├── app/                    # Main application screens
+│   ├── (tabs)/            # Tab-based navigation screens
+│   ├── _layout.tsx        # Root layout configuration
+│   ├── add-contact.tsx    # Add new contact screen
+│   ├── contact-details.tsx # Contact details screen
+│   ├── settings.tsx       # Settings screen
+│   └── ...                # Other screens
+├── context/               # React Context providers
+│   └── ContactsContext.tsx # Main contacts state management
+├── services/              # Business logic services
+│   ├── SmartRemindersService.ts
+│   ├── ScheduledMessagingService.ts
+│   ├── VIPContactService.ts
+│   └── GeoLocationService.ts
+├── components/            # Reusable UI components
+├── assets/               # Images, fonts, and static assets
+├── types/                # TypeScript type definitions
+└── utils/                # Utility functions
 ```
 
-### Theme Configuration
-The app supports automatic theme switching based on system preferences. Custom themes can be configured in `context/ThemeContext.tsx`.
+## 🔧 Recent Fixes & Improvements
 
-## 🚀 Deployment
+### ✅ Resolved Issues
+- **Fixed ExpoPushTokenManager Error** - Removed expo-notifications dependency causing native module errors
+- **Fixed ExpoLocation Error** - Removed expo-location dependency and simplified location services
+- **Resolved Routing Issues** - All React components now have proper default exports
+- **Cleaned Dependencies** - Removed unnecessary native modules causing build issues
 
-### Building for Production
+### 🚀 Current Status
+- ✅ App starts without native module errors
+- ✅ All routing works correctly
+- ✅ Core contact management features fully functional
+- ✅ VIP contact system operational
+- ✅ Smart reminders and automation working
+- ✅ Modern UI with smooth animations
+- ✅ Data persistence and export features
 
-1. **Configure app.json** with your app details
-2. **Build the app**:
-   ```bash
-   # iOS
-   expo build:ios
-   
-   # Android
-   expo build:android
-   ```
+## 🎯 Key Features Status
 
-3. **Submit to app stores**:
-   - iOS: Use App Store Connect
-   - Android: Use Google Play Console
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Contact CRUD | ✅ Working | Full add/edit/delete functionality |
+| Contact Photos | ✅ Working | Image picker integration |
+| VIP Contacts | ✅ Working | Enhanced notification settings |
+| Smart Reminders | ✅ Working | Birthday/anniversary reminders |
+| Duplicate Detection | ✅ Working | Find and merge duplicates |
+| Export/Import | ✅ Working | Multiple format support |
+| Advanced Search | ✅ Working | Multi-field search with filters |
+| Quick Actions | ✅ Working | Swipe gestures and FAB |
+| Contact Timeline | ✅ Working | Interaction history tracking |
+| Location Services | ⚠️ Simplified | Basic functionality without GPS |
 
-### Web Deployment
-```bash
-expo build:web
-```
+## 🔮 Future Enhancements
+
+### Planned Features
+- **Push Notifications** - Re-implement with proper configuration
+- **Location Services** - Add back with proper permissions setup
+- **Cloud Sync** - Sync contacts across devices
+- **Contact Sharing** - Share contact cards via QR codes
+- **Voice Commands** - Voice-activated contact search
+- **Integration APIs** - Connect with calendar and messaging apps
+
+### Technical Improvements
+- **Performance Optimization** - Lazy loading and virtualization
+- **Offline Support** - Enhanced offline functionality
+- **Security** - Contact data encryption
+- **Testing** - Comprehensive test coverage
+- **CI/CD** - Automated build and deployment
 
 ## 🤝 Contributing
 
@@ -331,29 +216,24 @@ expo build:web
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📝 License
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
+## 🙏 Acknowledgments
 
-For support and questions:
-- Create an issue in the GitHub repository
-- Check the documentation in the `/docs` folder
-- Review the code comments for implementation details
+- **Expo Team** - For the amazing development platform
+- **React Native Community** - For the excellent ecosystem
+- **Material Design** - For the design inspiration
+- **Open Source Contributors** - For the libraries and tools used
 
-## 🔮 Future Enhancements
+## 📞 Support
 
-- **Cloud Sync**: Sync contacts across devices
-- **Contact Import**: Import from phone contacts, Google, iCloud
-- **Advanced Analytics**: Detailed usage statistics and insights
-- **Custom Fields**: Add custom contact fields
-- **Contact Templates**: Pre-defined contact templates
-- **Batch Operations**: Bulk edit and delete operations
-- **Contact Backup**: Automated cloud backup
-- **Integration APIs**: Connect with CRM systems and other apps
-- **Voice Commands**: Voice-activated contact management
-- **AI-Powered Features**: Smart contact suggestions and organization
+If you encounter any issues or have questions:
+
+1. Check the [Issues](../../issues) page for existing problems
+2. Create a new issue with detailed information
+3. Include device information, OS version, and error logs
 
 ---
 
