@@ -12,6 +12,10 @@ import styled from 'styled-components/native';
 import ContactTimeline from '../components/ContactTimeline';
 import QuickActions from '../components/QuickActions';
 import { useContacts } from '../context/ContactsContext';
+import {
+  borderRadius,
+  menuPosition
+} from '../utils/responsive';
 
 const Container = styled.View`
   flex: 1;
@@ -944,8 +948,8 @@ export default function ContactDetailsScreen() {
       <Menu
         visible={menuVisible}
         onDismiss={() => setMenuVisible(false)}
-        anchor={{ x: width - 50, y: 80 }}
-        contentStyle={{ borderRadius: 12 }}
+        anchor={{ x: menuPosition.anchorX, y: menuPosition.anchorY }}
+        contentStyle={{ borderRadius: borderRadius.md }}
       >
         <Menu.Item
           leadingIcon="share-variant"

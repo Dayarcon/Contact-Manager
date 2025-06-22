@@ -5,6 +5,15 @@ import { Alert, Dimensions, StyleSheet, TouchableOpacity, Vibration, View } from
 import { Swipeable } from 'react-native-gesture-handler';
 import { Avatar, Chip, IconButton, Text, TouchableRipple, useTheme } from 'react-native-paper';
 import Animated, { SlideInRight } from 'react-native-reanimated';
+import {
+  avatarSizes,
+  badgeDimensions,
+  borderRadius,
+  chipDimensions,
+  fontSizes,
+  iconSizes,
+  spacing
+} from '../utils/responsive';
 
 const { width } = Dimensions.get('window');
 
@@ -128,56 +137,40 @@ export default function ContactListItem({
 
   const renderRightActions = () => (
     <View style={styles.swipeActionContainer}>
-      <Animated.View entering={SlideInRight.delay(100).springify()}>
+      {/* Call Action */}
+      <Animated.View entering={SlideInRight.delay(50).springify()}>
         <TouchableOpacity 
-          style={[styles.swipeActionButton, { backgroundColor: contact.isVIP ? "#FFD700" : "#4CAF50" }]}
+          style={[styles.swipeActionButton, styles.callButton]}
           onPress={handleCall}
-          activeOpacity={0.8}
+          activeOpacity={0.7}
         >
-          <View style={styles.actionIconContainer}>
+          <View style={styles.actionContent}>
             <IconButton 
               icon="phone" 
               iconColor="white" 
-              size={28}
-              style={{ margin: 0 }}
+              size={iconSizes.md}
+              style={styles.actionIcon}
             />
-            <Text style={styles.actionLabel}>{contact.isVIP ? "VIP Call" : "Call"}</Text>
+            <Text style={styles.actionLabel}>Call</Text>
           </View>
         </TouchableOpacity>
       </Animated.View>
-      
-      <Animated.View entering={SlideInRight.delay(200).springify()}>
+
+      {/* Message Action */}
+      <Animated.View entering={SlideInRight.delay(100).springify()}>
         <TouchableOpacity 
-          style={[styles.swipeActionButton, { backgroundColor: "#2196F3" }]}
+          style={[styles.swipeActionButton, styles.messageButton]}
           onPress={handleMessage}
-          activeOpacity={0.8}
+          activeOpacity={0.7}
         >
-          <View style={styles.actionIconContainer}>
+          <View style={styles.actionContent}>
             <IconButton 
               icon="message" 
               iconColor="white" 
-              size={28}
-              style={{ margin: 0 }}
+              size={iconSizes.md}
+              style={styles.actionIcon}
             />
             <Text style={styles.actionLabel}>Message</Text>
-          </View>
-        </TouchableOpacity>
-      </Animated.View>
-      
-      <Animated.View entering={SlideInRight.delay(300).springify()}>
-        <TouchableOpacity 
-          style={[styles.swipeActionButton, { backgroundColor: "#f44336" }]}
-          onPress={handleDelete}
-          activeOpacity={0.8}
-        >
-          <View style={styles.actionIconContainer}>
-            <IconButton 
-              icon="delete" 
-              iconColor="white" 
-              size={28}
-              style={{ margin: 0 }}
-            />
-            <Text style={styles.actionLabel}>Delete</Text>
           </View>
         </TouchableOpacity>
       </Animated.View>
@@ -205,8 +198,10 @@ export default function ContactListItem({
   return (
     <Swipeable
       renderRightActions={renderRightActions}
-      rightThreshold={40}
+      rightThreshold={60}
       overshootRight={false}
+      friction={1.5}
+      enableTrackpadTwoFingerGesture={true}
     >
       <TouchableRipple onPress={() => onPress(contact)} rippleColor="rgba(0,0,0,0.1)">
         <View style={styles.contactContent}>
@@ -215,13 +210,13 @@ export default function ContactListItem({
           <View style={styles.avatarContainer}>
             {contact.imageUri ? (
               <Avatar.Image 
-                size={56} 
+                size={avatarSizes.large} 
                 source={{ uri: contact.imageUri }}
                 style={styles.avatarImage}
               />
             ) : (
               <Avatar.Text 
-                size={56} 
+                size={avatarSizes.large} 
                 label={initials}
                 color="white"
                 style={[styles.avatarText, { backgroundColor: contact.isVIP ? '#FFD700' : avatarColor }]}
@@ -229,12 +224,12 @@ export default function ContactListItem({
             )}
             {contact.isFavorite && (
               <View style={styles.favoriteBadge}>
-                <Text style={{ color: 'white', fontSize: 10 }}>★</Text>
+                <Text style={{ color: 'white', fontSize: fontSizes.xs }}>★</Text>
               </View>
             )}
             {contact.isVIP && (
               <View style={styles.vipBadge}>
-                <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>👑</Text>
+                <Text style={{ color: 'white', fontSize: fontSizes.sm, fontWeight: 'bold' }}>👑</Text>
               </View>
             )}
           </View>
@@ -245,16 +240,16 @@ export default function ContactListItem({
               {contact.isVIP && ' 👑'}
             </Text>
             <Text style={styles.contactSubtitle}>{getContactSubtitle()}</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.xs }}>
               {contact.group && (
                 <Chip 
                   style={{ 
-                    height: 31, 
+                    height: chipDimensions.height, 
                     alignSelf: 'flex-start'
                   }}
-                  textStyle={{ fontSize: 10 }}
+                  textStyle={{ fontSize: fontSizes.xs }}
                 >
-                  <Text style={{ fontSize: 10, color: 'black', fontWeight: '800' }}>
+                  <Text style={{ fontSize: fontSizes.xs, color: 'black', fontWeight: '800' }}>
                     {contact.group}
                   </Text>
                 </Chip>
@@ -262,13 +257,13 @@ export default function ContactListItem({
               {contact.isVIP && (
                 <Chip 
                   style={{ 
-                    height: 31, 
+                    height: chipDimensions.height, 
                     alignSelf: 'flex-start',
                     backgroundColor: '#FFD700'
                   }}
-                  textStyle={{ fontSize: 10 }}
+                  textStyle={{ fontSize: fontSizes.xs }}
                 >
-                  <Text style={{ fontSize: 10, color: 'black', fontWeight: '800' }}>
+                  <Text style={{ fontSize: fontSizes.xs, color: 'black', fontWeight: '800' }}>
                     VIP
                   </Text>
                 </Chip>
@@ -281,7 +276,7 @@ export default function ContactListItem({
               <IconButton
                 icon="crown"
                 iconColor="#FFD700"
-                size={24}
+                size={iconSizes.md}
                 onPress={handleToggleVIP}
               />
             )}
@@ -289,7 +284,7 @@ export default function ContactListItem({
               <IconButton
                 icon="star"
                 iconColor="#ff6b35"
-                size={24}
+                size={iconSizes.md}
                 onPress={(e) => {
                   e.stopPropagation();
                   onToggleFavorite(contact.id);
@@ -298,7 +293,7 @@ export default function ContactListItem({
             )}
             <IconButton
               icon="dots-vertical"
-              size={24}
+              size={iconSizes.md}
               onPress={(e) => {
                 e.stopPropagation();
                 onPress(contact);
@@ -313,46 +308,53 @@ export default function ContactListItem({
 
 const styles = StyleSheet.create({
   swipeActionContainer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    width: width * 0.35,
+    width: width * 0.30,
     height: '100%',
-    paddingRight: 16,
+    gap: 10,
+    marginTop: 5,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   swipeActionButton: {
-    width: 70,
-    height: '80%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8,
-    borderRadius: 16,
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
+    width: 70, // Fixed equal width for both buttons
+    height: 70, // Fixed equal height for both buttons
+    marginHorizontal: spacing.sm,
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
   },
-  actionIconContainer: {
+  actionContent: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  actionIcon: {
+    margin: 0,
+    marginBottom: spacing.xs,
   },
   actionLabel: {
     color: 'white',
-    fontSize: 10,
+    fontSize: fontSizes.xs,
     fontWeight: '600',
-    marginTop: 4,
     textAlign: 'center',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
+  },
+  callButton: {
+    backgroundColor: '#4CAF50',
+  },
+  messageButton: {
+    backgroundColor: '#2196F3',
   },
   contactContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
+    padding: spacing.lg,
     backgroundColor: 'white',
-    borderRadius: 20,
-    margin: 16,
-    marginBottom: 12,
+    borderRadius: borderRadius.xl,
+    margin: spacing.md,
+    marginBottom: spacing.sm,
     elevation: 4,
     shadowColor: '#000',
     shadowOpacity: 0.08,
@@ -362,18 +364,18 @@ const styles = StyleSheet.create({
   },
   contactInfo: {
     flex: 1,
-    marginLeft: 16,
+    marginLeft: spacing.md,
   },
   contactName: {
-    fontSize: 18,
+    fontSize: fontSizes.lg,
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
     letterSpacing: 0.3,
   },
   contactSubtitle: {
-    fontSize: 14,
+    fontSize: fontSizes.md,
     color: '#666666',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
     letterSpacing: 0.2,
   },
   actionButtons: {
@@ -397,11 +399,11 @@ const styles = StyleSheet.create({
   },
   favoriteBadge: {
     position: 'absolute',
-    top: -4,
-    right: -4,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    top: -spacing.xs,
+    right: -spacing.xs,
+    width: badgeDimensions.size,
+    height: badgeDimensions.size,
+    borderRadius: badgeDimensions.size / 2,
     backgroundColor: '#ff6b35',
     alignItems: 'center',
     justifyContent: 'center',
@@ -412,11 +414,11 @@ const styles = StyleSheet.create({
   },
   vipBadge: {
     position: 'absolute',
-    top: -4,
-    left: -4,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    top: -spacing.xs,
+    left: -spacing.xs,
+    width: badgeDimensions.size + spacing.xs,
+    height: badgeDimensions.size + spacing.xs,
+    borderRadius: (badgeDimensions.size + spacing.xs) / 2,
     backgroundColor: '#FFD700',
     alignItems: 'center',
     justifyContent: 'center',
@@ -433,7 +435,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 20,
+    borderRadius: borderRadius.xl,
     borderWidth: 2,
     pointerEvents: 'none',
   },

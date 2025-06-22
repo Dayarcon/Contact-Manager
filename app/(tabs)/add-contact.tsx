@@ -7,6 +7,19 @@ import { Button, Card, Chip, IconButton, Snackbar, Switch, Text, TextInput, useT
 import Animated, { FadeInUp, SlideInRight } from 'react-native-reanimated';
 import styled from 'styled-components/native';
 import { EmailAddress, PhoneNumber, useContacts } from '../../context/ContactsContext';
+import {
+  avatarSizes,
+  borderRadius,
+  buttonDimensions,
+  cardDimensions,
+  chipDimensions,
+  fabDimensions,
+  fontSizes,
+  headerHeights,
+  inputDimensions,
+  progressBarDimensions,
+  spacing
+} from '../../utils/responsive';
 
 const { width } = Dimensions.get('window');
 
@@ -20,48 +33,48 @@ const HeaderGradient = styled(LinearGradient)`
   top: 0;
   left: 0;
   right: 0;
-  height: 120px;
+  height: ${headerHeights.medium}px;
   z-index: -1;
 `;
 
 const FormScroll = styled(ScrollView)`
   flex: 1;
-  padding: 16px;
+  padding: ${spacing.md}px;
 `;
 
 const SectionCard = styled(Card)`
-  margin-bottom: 16px;
-  border-radius: 20px;
+  margin-bottom: ${spacing.md}px;
+  border-radius: ${cardDimensions.borderRadius}px;
   background-color: white;
   border: 1px solid rgba(0, 0, 0, 0.05);
 `;
 
 const SectionHeader = styled(Text)`
-  font-size: 20px;
+  font-size: ${fontSizes.xxl}px;
   font-weight: 700;
-  margin-bottom: 20px;
+  margin-bottom: ${spacing.lg}px;
   color: #1a1a1a;
   letter-spacing: 0.3px;
 `;
 
 const StyledTextInput = styled(TextInput)`
-  margin-bottom: 16px;
+  margin-bottom: ${spacing.md}px;
   background-color: #fafafa;
-  border-radius: 12px;
+  border-radius: ${inputDimensions.borderRadius}px;
 `;
 
 const ItemRow = styled.View`
   flex-direction: row;
   align-items: flex-start;
-  margin-bottom: 16px;
-  padding: 16px;
+  margin-bottom: ${spacing.md}px;
+  padding: ${spacing.md}px;
   background-color: #f8f9fa;
-  border-radius: 16px;
+  border-radius: ${borderRadius.lg}px;
 `;
 
 const AddButton = styled(Button)`
-  margin-top: 16px;
-  border-radius: 12px;
+  margin-top: ${spacing.md}px;
+  border-radius: ${buttonDimensions.borderRadius}px;
   background-color: #f0f0f0;
 `;
 
@@ -69,13 +82,13 @@ const SwitchRow = styled.View`
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 0;
+  padding: ${spacing.md}px 0;
   border-bottom-width: 1px;
   border-bottom-color: #f0f0f0;
 `;
 
 const SwitchLabel = styled(Text)`
-  font-size: 16px;
+  font-size: ${fontSizes.lg}px;
   font-weight: 600;
   color: #1a1a1a;
   letter-spacing: 0.2px;
@@ -84,37 +97,37 @@ const SwitchLabel = styled(Text)`
 const ChipContainer = styled.View`
   flex-direction: row;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 16px;
+  gap: ${spacing.sm}px;
+  margin-top: ${spacing.md}px;
 `;
 
 const StyledChip = styled(Chip)`
-  margin-bottom: 8px;
+  margin-bottom: ${spacing.sm}px;
   background-color: #f0f0f0;
-  border-radius: 20px;
+  border-radius: ${chipDimensions.borderRadius}px;
 `;
 
 const SelectedChip = styled(Chip)`
-  margin-bottom: 8px;
+  margin-bottom: ${spacing.sm}px;
   background-color: #007AFF;
-  border-radius: 20px;
+  border-radius: ${chipDimensions.borderRadius}px;
 `;
 
 const PhotoSection = styled.View`
   align-items: center;
-  margin-bottom: 24px;
-  padding: 20px;
+  margin-bottom: ${spacing.lg}px;
+  padding: ${spacing.lg}px;
 `;
 
 const AvatarContainer = styled.View`
   position: relative;
-  margin-bottom: 16px;
+  margin-bottom: ${spacing.md}px;
 `;
 
 const ContactAvatar = styled.View`
-  width: 100px;
-  height: 100px;
-  border-radius: 50px;
+  width: ${avatarSizes.xlarge}px;
+  height: ${avatarSizes.xlarge}px;
+  border-radius: ${avatarSizes.xlarge / 2}px;
   background-color: #f0f0f0;
   align-items: center;
   justify-content: center;
@@ -123,56 +136,56 @@ const ContactAvatar = styled.View`
 `;
 
 const AvatarImage = styled.Image`
-  width: 100px;
-  height: 100px;
-  border-radius: 50px;
+  width: ${avatarSizes.xlarge}px;
+  height: ${avatarSizes.xlarge}px;
+  border-radius: ${avatarSizes.xlarge / 2}px;
   border-width: 2px;
   border-color: #007AFF;
 `;
 
 const AvatarText = styled(Text)`
-  font-size: 36px;
+  font-size: ${fontSizes.display}px;
   font-weight: 700;
   color: #007AFF;
 `;
 
 const PhotoActions = styled.View`
   flex-direction: row;
-  gap: 12px;
+  gap: ${spacing.sm}px;
 `;
 
 const PhotoButton = styled(Button)`
-  border-radius: 20px;
+  border-radius: ${borderRadius.round}px;
 `;
 
 const ProgressCard = styled.View`
   background-color: white;
-  border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 16px;
+  border-radius: ${cardDimensions.borderRadius}px;
+  padding: ${spacing.lg}px;
+  margin-bottom: ${spacing.md}px;
   border: 1px solid rgba(0, 0, 0, 0.05);
 `;
 
 const ProgressBar = styled.View`
-  height: 8px;
+  height: ${progressBarDimensions.height}px;
   background-color: #f0f0f0;
-  border-radius: 4px;
+  border-radius: ${progressBarDimensions.borderRadius}px;
   overflow: hidden;
-  margin-top: 12px;
+  margin-top: ${spacing.sm}px;
 `;
 
 const ProgressFill = styled.View<{ width: number; color: string }>`
   height: 100%;
   background-color: ${(props: { width: number; color: string }) => props.color};
   width: ${(props: { width: number; color: string }) => props.width}%;
-  border-radius: 4px;
+  border-radius: ${progressBarDimensions.borderRadius}px;
 `;
 
 const FloatingSaveButton = styled.View`
   position: absolute;
-  bottom: 20px;
-  right: 20px;
-  left: 20px;
+  bottom: ${fabDimensions.position.bottom}px;
+  right: ${fabDimensions.position.right}px;
+  left: ${fabDimensions.position.right}px;
 `;
 
 const AnimatedCard = Animated.createAnimatedComponent(SectionCard);
