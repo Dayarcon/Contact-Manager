@@ -16,7 +16,7 @@ export default function TabLayout() {
         <Stack.Screen name="scan-card" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="manage-contacts" options={{ headerShown: false }} />
         <Stack.Screen name="quick-actions" options={{ headerShown: false }} />
-        <Stack.Screen name="settings" options={{ headerShown: true, title: 'Settings' }} />
+        <Stack.Screen name="explore" options={{ headerShown: false }} />
       </Stack>
     </GestureHandlerRootView>
   );

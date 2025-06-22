@@ -6,7 +6,7 @@ import { Alert, ScrollView, View } from 'react-native';
 import { Button, Card, Chip, IconButton, Snackbar, Switch, Text, TextInput, useTheme } from 'react-native-paper';
 import Animated, { FadeInUp, SlideInRight } from 'react-native-reanimated';
 import styled from 'styled-components/native';
-import { EmailAddress, PhoneNumber, useContacts } from '../context/ContactsContext';
+import { EmailAddress, PhoneNumber, useContacts } from '../../context/ContactsContext';
 
 const Container = styled.View`
   flex: 1;

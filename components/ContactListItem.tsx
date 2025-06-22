@@ -1,138 +1,12 @@
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
 import React from 'react';
-import { Alert, Dimensions, Vibration, View } from 'react-native';
+import { Alert, Dimensions, StyleSheet, TouchableOpacity, Vibration, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Avatar, Chip, IconButton, Text, TouchableRipple, useTheme } from 'react-native-paper';
 import Animated, { SlideInRight } from 'react-native-reanimated';
-import styled from 'styled-components/native';
 
 const { width } = Dimensions.get('window');
-
-const SwipeActionContainer = styled.View`
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-end;
-  width: ${width * 0.35}px;
-  height: 100%;
-  padding-right: 16px;
-`;
-
-const SwipeActionButton = styled.TouchableOpacity<{ backgroundColor: string }>`
-  width: 70px;
-  height: 80%;
-  background-color: ${(props: { backgroundColor: string }) => props.backgroundColor};
-  align-items: center;
-  justify-content: center;
-  margin-left: 8px;
-  border-radius: 16px;
-  elevation: 6;
-  shadow-color: #000;
-  shadow-opacity: 0.15;
-  shadow-radius: 8px;
-  shadow-offset: 0px 2px;
-`;
-
-const ActionIconContainer = styled.View`
-  align-items: center;
-  justify-content: center;
-`;
-
-const ActionLabel = styled(Text)`
-  color: white;
-  font-size: 10px;
-  font-weight: 600;
-  margin-top: 4px;
-  text-align: center;
-  letter-spacing: 0.2px;
-`;
-
-const ContactContent = styled.View`
-  flex-direction: row;
-  align-items: center;
-  padding: 20px;
-  background-color: white;
-  border-radius: 20px;
-  margin: 0 16px 12px 16px;
-  elevation: 4;
-  shadow-color: #000;
-  shadow-opacity: 0.08;
-  shadow-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-`;
-
-const ContactInfo = styled.View`
-  flex: 1;
-  margin-left: 16px;
-`;
-
-const ContactName = styled(Text)`
-  font-size: 18px;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin-bottom: 4px;
-  letter-spacing: 0.3px;
-`;
-
-const ContactSubtitle = styled(Text)`
-  font-size: 14px;
-  color: #666666;
-  margin-bottom: 4px;
-  letter-spacing: 0.2px;
-`;
-
-const ActionButtons = styled.View`
-  flex-direction: row;
-  align-items: center;
-`;
-
-const AvatarContainer = styled.View`
-  position: relative;
-`;
-
-const FavoriteBadge = styled.View`
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 20px;
-  height: 20px;
-  border-radius: 10px;
-  background-color: #ff6b35;
-  align-items: center;
-  justify-content: center;
-  elevation: 2;
-  shadow-color: #000;
-  shadow-opacity: 0.2;
-  shadow-radius: 4px;
-`;
-
-const VIPBadge = styled.View`
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  width: 24px;
-  height: 24px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #FFD700, #FFA500);
-  align-items: center;
-  justify-content: center;
-  elevation: 3;
-  shadow-color: #000;
-  shadow-opacity: 0.3;
-  shadow-radius: 6px;
-  border: 2px solid white;
-`;
-
-const VIPBorder = styled.View<{ isVIP: boolean }>`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border-radius: 20px;
-  border: ${(props: { isVIP: boolean }) => props.isVIP ? '2px solid #FFD700' : 'none'};
-  pointer-events: none;
-`;
 
 const getInitials = (name: string) => {
   return name
@@ -199,22 +73,18 @@ export default function ContactListItem({
           );
         }
       } catch (error) {
-        console.error('Error opening phone dialer:', error);
-        Alert.alert(
-          'Cannot Open Phone Dialer',
-          `Phone number: ${primaryPhone}\n\nThis feature is not available on this device or simulator.`,
-          [
-            { text: 'Copy Number', onPress: () => Clipboard.setString(primaryPhone) },
-            { text: 'OK', style: 'cancel' }
-          ]
-        );
+        console.error('Error making phone call:', error);
+        Alert.alert('Error', 'Failed to make phone call. Please try again.');
       }
+    } else {
+      Alert.alert('No Phone Number', 'This contact doesn\'t have a phone number.');
     }
   };
 
   const handleMessage = async () => {
     if (primaryPhone) {
-      Vibration.vibrate(50);
+      Vibration.vibrate(30);
+      
       try {
         const canOpen = await Linking.canOpenURL(`sms:${primaryPhone}`);
         if (canOpen) {
@@ -232,21 +102,22 @@ export default function ContactListItem({
         }
       } catch (error) {
         console.error('Error opening SMS:', error);
-        Alert.alert(
-          'Cannot Open SMS',
-          `Phone number: ${primaryPhone}\n\nThis feature is not available on this device or simulator.`,
-          [
-            { text: 'Copy Number', onPress: () => Clipboard.setString(primaryPhone) },
-            { text: 'OK', style: 'cancel' }
-          ]
-        );
+        Alert.alert('Error', 'Failed to open SMS. Please try again.');
       }
+    } else {
+      Alert.alert('No Phone Number', 'This contact doesn\'t have a phone number.');
     }
   };
 
   const handleDelete = () => {
-    Vibration.vibrate(100);
-    onDelete(contact.id);
+    Alert.alert(
+      'Delete Contact',
+      `Are you sure you want to delete ${contact.name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => onDelete(contact.id) }
+      ]
+    );
   };
 
   const handleToggleVIP = (e: any) => {
@@ -256,61 +127,61 @@ export default function ContactListItem({
   };
 
   const renderRightActions = () => (
-    <SwipeActionContainer>
+    <View style={styles.swipeActionContainer}>
       <Animated.View entering={SlideInRight.delay(100).springify()}>
-        <SwipeActionButton 
-          backgroundColor={contact.isVIP ? "#FFD700" : "#4CAF50"}
+        <TouchableOpacity 
+          style={[styles.swipeActionButton, { backgroundColor: contact.isVIP ? "#FFD700" : "#4CAF50" }]}
           onPress={handleCall}
           activeOpacity={0.8}
         >
-          <ActionIconContainer>
+          <View style={styles.actionIconContainer}>
             <IconButton 
               icon="phone" 
               iconColor="white" 
               size={28}
               style={{ margin: 0 }}
             />
-            <ActionLabel>{contact.isVIP ? "VIP Call" : "Call"}</ActionLabel>
-          </ActionIconContainer>
-        </SwipeActionButton>
+            <Text style={styles.actionLabel}>{contact.isVIP ? "VIP Call" : "Call"}</Text>
+          </View>
+        </TouchableOpacity>
       </Animated.View>
       
       <Animated.View entering={SlideInRight.delay(200).springify()}>
-        <SwipeActionButton 
-          backgroundColor="#2196F3"
+        <TouchableOpacity 
+          style={[styles.swipeActionButton, { backgroundColor: "#2196F3" }]}
           onPress={handleMessage}
           activeOpacity={0.8}
         >
-          <ActionIconContainer>
+          <View style={styles.actionIconContainer}>
             <IconButton 
               icon="message" 
               iconColor="white" 
               size={28}
               style={{ margin: 0 }}
             />
-            <ActionLabel>Message</ActionLabel>
-          </ActionIconContainer>
-        </SwipeActionButton>
+            <Text style={styles.actionLabel}>Message</Text>
+          </View>
+        </TouchableOpacity>
       </Animated.View>
       
       <Animated.View entering={SlideInRight.delay(300).springify()}>
-        <SwipeActionButton 
-          backgroundColor="#f44336"
+        <TouchableOpacity 
+          style={[styles.swipeActionButton, { backgroundColor: "#f44336" }]}
           onPress={handleDelete}
           activeOpacity={0.8}
         >
-          <ActionIconContainer>
+          <View style={styles.actionIconContainer}>
             <IconButton 
               icon="delete" 
               iconColor="white" 
               size={28}
               style={{ margin: 0 }}
             />
-            <ActionLabel>Delete</ActionLabel>
-          </ActionIconContainer>
-        </SwipeActionButton>
+            <Text style={styles.actionLabel}>Delete</Text>
+          </View>
+        </TouchableOpacity>
       </Animated.View>
-    </SwipeActionContainer>
+    </View>
   );
 
   const getContactSubtitle = () => {
@@ -338,53 +209,42 @@ export default function ContactListItem({
       overshootRight={false}
     >
       <TouchableRipple onPress={() => onPress(contact)} rippleColor="rgba(0,0,0,0.1)">
-        <ContactContent>
-          <VIPBorder isVIP={contact.isVIP} />
+        <View style={styles.contactContent}>
+          <View style={[styles.vipBorder, { borderColor: contact.isVIP ? '#FFD700' : 'transparent' }]} />
           
-          <AvatarContainer>
+          <View style={styles.avatarContainer}>
             {contact.imageUri ? (
               <Avatar.Image 
                 size={56} 
                 source={{ uri: contact.imageUri }}
-                style={{ 
-                  elevation: 4,
-                  shadowColor: '#000',
-                  shadowOpacity: 0.2,
-                  shadowRadius: 8
-                }}
+                style={styles.avatarImage}
               />
             ) : (
               <Avatar.Text 
                 size={56} 
                 label={initials}
                 color="white"
-                style={{ 
-                  backgroundColor: contact.isVIP ? '#FFD700' : avatarColor,
-                  elevation: 4,
-                  shadowColor: '#000',
-                  shadowOpacity: 0.2,
-                  shadowRadius: 8
-                }}
+                style={[styles.avatarText, { backgroundColor: contact.isVIP ? '#FFD700' : avatarColor }]}
               />
             )}
             {contact.isFavorite && (
-              <FavoriteBadge>
+              <View style={styles.favoriteBadge}>
                 <Text style={{ color: 'white', fontSize: 10 }}>★</Text>
-              </FavoriteBadge>
+              </View>
             )}
             {contact.isVIP && (
-              <VIPBadge>
+              <View style={styles.vipBadge}>
                 <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>👑</Text>
-              </VIPBadge>
+              </View>
             )}
-          </AvatarContainer>
+          </View>
           
-          <ContactInfo>
-            <ContactName style={{ color: contact.isVIP ? '#FFD700' : '#1a1a1a' }}>
+          <View style={styles.contactInfo}>
+            <Text style={[styles.contactName, { color: contact.isVIP ? '#FFD700' : '#1a1a1a' }]}>
               {contact.name}
               {contact.isVIP && ' 👑'}
-            </ContactName>
-            <ContactSubtitle>{getContactSubtitle()}</ContactSubtitle>
+            </Text>
+            <Text style={styles.contactSubtitle}>{getContactSubtitle()}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
               {contact.group && (
                 <Chip 
@@ -414,9 +274,9 @@ export default function ContactListItem({
                 </Chip>
               )}
             </View>
-          </ContactInfo>
+          </View>
           
-          <ActionButtons>
+          <View style={styles.actionButtons}>
             {contact.isVIP && (
               <IconButton
                 icon="crown"
@@ -444,9 +304,137 @@ export default function ContactListItem({
                 onPress(contact);
               }}
             />
-          </ActionButtons>
-        </ContactContent>
+          </View>
+        </View>
       </TouchableRipple>
     </Swipeable>
   );
-} 
+}
+
+const styles = StyleSheet.create({
+  swipeActionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    width: width * 0.35,
+    height: '100%',
+    paddingRight: 16,
+  },
+  swipeActionButton: {
+    width: 70,
+    height: '80%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+    borderRadius: 16,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  actionIconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionLabel: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+  contactContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    margin: 16,
+    marginBottom: 12,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  contactInfo: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  contactName: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+    letterSpacing: 0.3,
+  },
+  contactSubtitle: {
+    fontSize: 14,
+    color: '#666666',
+    marginBottom: 4,
+    letterSpacing: 0.2,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarContainer: {
+    position: 'relative',
+  },
+  avatarImage: {
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  avatarText: {
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  favoriteBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#ff6b35',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  vipBadge: {
+    position: 'absolute',
+    top: -4,
+    left: -4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFD700',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  vipBorder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 20,
+    borderWidth: 2,
+    pointerEvents: 'none',
+  },
+}); 

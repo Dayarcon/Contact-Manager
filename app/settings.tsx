@@ -8,6 +8,7 @@ import { Button, Card, IconButton, Snackbar, Text } from 'react-native-paper';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import styled from 'styled-components/native';
 import { useContacts } from '../context/ContactsContext';
+import GeoLocationService from '../services/GeoLocationService';
 
 const Container = styled.View`
   flex: 1;
@@ -144,6 +145,9 @@ export default function SettingsScreen() {
     importContacts: () => console.warn('Context not available'),
     isLoading: true
   };
+
+  const geoLocationService = GeoLocationService.getInstance();
+  const locationStats = geoLocationService.getLocationStats();
 
   const exportToJSON = async () => {
     try {
@@ -318,14 +322,14 @@ export default function SettingsScreen() {
       }}>
         <IconButton
           icon="arrow-left"
-          iconColor="white"
+          iconColor="black"
           size={28}
           onPress={() => router.back()}
           style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
         />
         <Text style={{ 
           flex: 1, 
-          color: 'white', 
+          color: 'black', 
           fontSize: 24, 
           fontWeight: '800', 
           marginLeft: 16,
@@ -413,6 +417,78 @@ export default function SettingsScreen() {
                 labelStyle={{ color: '#03dac6' }}
               >
                 Import Contacts
+              </ExportButton>
+            </Card.Content>
+          </ExportSection>
+        </Animated.View>
+
+        <Animated.View entering={FadeInUp.delay(200).springify()}>
+          <ExportSection>
+            <Card.Content style={{ padding: 24 }}>
+              <Text style={{ 
+                fontSize: 20, 
+                fontWeight: '800', 
+                marginBottom: 20, 
+                color: '#1a1a1a',
+                letterSpacing: 0.5
+              }}>
+                📍 Location Services
+              </Text>
+              
+              <Text style={{ 
+                fontSize: 14, 
+                color: '#666666', 
+                marginBottom: 20,
+                lineHeight: 20
+              }}>
+                Manage location tracking, nearby contacts, and location-based features.
+              </Text>
+
+              <View style={{ 
+                flexDirection: 'row', 
+                justifyContent: 'space-around', 
+                marginBottom: 20,
+                backgroundColor: '#f8f9fa',
+                borderRadius: 12,
+                padding: 16
+              }}>
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1976D2' }}>
+                    {locationStats.totalGeoContacts}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#666' }}>Geo Contacts</Text>
+                </View>
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#FF9800' }}>
+                    {locationStats.activeTriggers}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#666' }}>Active Triggers</Text>
+                </View>
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ fontSize: 24, fontWeight: 'bold', color: locationStats.isTracking ? '#4CAF50' : '#F44336' }}>
+                    {locationStats.isTracking ? 'Yes' : 'No'}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#666' }}>Tracking</Text>
+                </View>
+              </View>
+
+              <ExportButton
+                mode="contained"
+                onPress={() => router.push('/location-settings')}
+                icon="cog"
+                style={{ backgroundColor: '#1976D2' }}
+              >
+                Location Settings
+              </ExportButton>
+
+              <ExportButton
+                mode="outlined"
+                onPress={() => router.push('/nearby-contacts')}
+                icon="map-marker-multiple"
+                style={{ borderColor: '#1976D2' }}
+                labelStyle={{ color: '#1976D2' }}
+              >
+                Nearby Contacts
               </ExportButton>
             </Card.Content>
           </ExportSection>

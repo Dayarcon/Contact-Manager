@@ -7,7 +7,7 @@ import styled from 'styled-components/native';
 import { useContacts } from '../context/ContactsContext';
 import AutoTaggingService, { TagRule } from '../services/AutoTaggingService';
 import GeoLocationService, { GeoLocationSettings } from '../services/GeoLocationService';
-import ScheduledMessagingService, { ScheduledMessagingSettings } from '../services/ScheduledMessagingService';
+import ScheduledMessagingService, { MessagingSettings } from '../services/ScheduledMessagingService';
 import SmartRemindersService, { ReminderSettings } from '../services/SmartRemindersService';
 
 const Container = styled.View`
@@ -167,13 +167,12 @@ export default function AutomationSettingsScreen() {
     customMessageTemplate: 'Happy {type} {name}! 🎉'
   });
 
-  const [messagingSettings, setMessagingSettings] = useState<ScheduledMessagingSettings>({
+  const [messagingSettings, setMessagingSettings] = useState<MessagingSettings>({
     enableAutoBirthdayMessages: true,
     enableAutoAnniversaryMessages: true,
-    enableReminders: false,
     defaultMessageTime: "09:00",
-    timezone: "America/New_York",
-    maxMessagesPerDay: 10
+    customBirthdayMessage: 'Happy Birthday {name}! 🎉',
+    customAnniversaryMessage: 'Happy Anniversary {name}! 💍'
   });
 
   const [geoSettings, setGeoSettings] = useState<GeoLocationSettings>({
@@ -182,7 +181,8 @@ export default function AutomationSettingsScreen() {
     defaultRadius: 1000,
     maxSuggestions: 5,
     enableBackgroundLocation: false,
-    locationUpdateInterval: 15
+    locationUpdateInterval: 15,
+    locationAccuracy: 'balanced'
   });
 
   const [tagRules, setTagRules] = useState<TagRule[]>([]);
@@ -221,7 +221,7 @@ export default function AutomationSettingsScreen() {
       const reminders = remindersService.getReminders();
       const scheduledMessages = messagingService.getScheduledMessages();
       const upcomingReminders = remindersService.getUpcomingReminders();
-      const upcomingMessages = messagingService.getUpcomingMessages();
+      const upcomingMessages = messagingService.getPendingMessages();
       const geoContacts = geoService.getGeoContacts();
 
       setStats({
@@ -243,7 +243,7 @@ export default function AutomationSettingsScreen() {
     await remindersService.updateReminderSettings(updatedSettings);
   };
 
-  const handleMessagingSettingChange = async (key: keyof ScheduledMessagingSettings, value: any) => {
+  const handleMessagingSettingChange = async (key: keyof MessagingSettings, value: any) => {
     const updatedSettings = { ...messagingSettings, [key]: value };
     setMessagingSettings(updatedSettings);
     await messagingService.updateSettings(updatedSettings);

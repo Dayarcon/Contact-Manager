@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-import SmartRemindersService from '../services/SmartRemindersService';
 import AutoTaggingService from '../services/AutoTaggingService';
-import ScheduledMessagingService from '../services/ScheduledMessagingService';
 import GeoLocationService from '../services/GeoLocationService';
+import ScheduledMessagingService from '../services/ScheduledMessagingService';
+import SmartRemindersService from '../services/SmartRemindersService';
 
 export type PhoneNumber = {
   id: string;
@@ -287,7 +287,6 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
 
     setContacts(prev => {
       const updated = [...prev, newContact];
-      saveContacts(updated);
       
       // Trigger automation features
       triggerAutomationFeatures(newContact);
@@ -303,7 +302,6 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
           ? { ...contact, ...updated, updatedAt: new Date().toISOString() }
           : contact
       );
-      saveContacts(updatedContacts);
       
       // Trigger automation features for updated contact
       const updatedContact = updatedContacts.find(c => c.id === id);
@@ -572,25 +570,15 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
   // Automation features integration
   const triggerAutomationFeatures = async (contact: Contact) => {
     try {
-      // 1. Auto-tagging
-      const suggestedTags = await taggingService.autoTagContact(contact);
-      if (suggestedTags.length > 0) {
-        const updatedLabels = [...(contact.labels || []), ...suggestedTags];
-        editContact(contact.id, { labels: updatedLabels });
-      }
-
-      // 2. Generate reminders for birthdays/anniversaries
+      // Auto-tagging
+      await taggingService.autoTagContact(contact);
+      
+      // Smart reminders for birthdays and anniversaries
       await remindersService.generateRemindersFromContacts([contact]);
-
-      // 3. Generate scheduled messages
-      await messagingService.generateBirthdayMessages([contact]);
-      await messagingService.generateAnniversaryMessages([contact]);
-
-      // 4. Geo-location features (if address is provided)
-      if (contact.address) {
-        // In a real app, you would geocode the address here
-        // For now, we'll just log it
-        console.log(`Contact ${contact.name} has address: ${contact.address}`);
+      
+      // Location tracking
+      if (geoService.getCurrentLocation()) {
+        await geoService.addGeoContact(contact, geoService.getCurrentLocation()!);
       }
     } catch (error) {
       console.error('Error triggering automation features:', error);
@@ -602,10 +590,6 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
     try {
       // Generate reminders for all contacts
       await remindersService.generateRemindersFromContacts(contacts);
-      
-      // Generate scheduled messages
-      await messagingService.generateBirthdayMessages(contacts);
-      await messagingService.generateAnniversaryMessages(contacts);
       
       // Auto-tag all contacts
       for (const contact of contacts) {
