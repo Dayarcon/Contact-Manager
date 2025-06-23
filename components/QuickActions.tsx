@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { Contact } from '../context/ContactsContext';
 import QuickActionsService, { QuickAction } from '../services/QuickActionsService';
@@ -57,7 +57,16 @@ const QuickActions: React.FC<QuickActionsProps> = ({
   };
 
   const handleActionPress = async (action: QuickAction) => {
+    console.log('=== QUICK ACTION DEBUG ===');
+    console.log('Action pressed:', action.name);
+    console.log('Action ID:', action.id);
+    console.log('Action platform:', action.platform);
+    console.log('Action available:', action.isAvailable);
+    console.log('Contact:', contact.name);
+    console.log('Contact phone numbers:', contact.phoneNumbers);
+    
     if (!action.isAvailable) {
+      console.log('Action not available, showing alert');
       Alert.alert(
         'App Not Available',
         `${action.name} is not installed on your device.`,
@@ -71,18 +80,24 @@ const QuickActions: React.FC<QuickActionsProps> = ({
 
     try {
       setExecutingAction(action.id);
+      console.log('Executing action via service...');
       const success = await quickActionsService.executeQuickAction(action, contact);
+      console.log('Action execution result:', success);
       
       if (success) {
+        console.log('Action executed successfully');
         onActionExecuted?.();
       } else {
+        console.log('Action execution failed');
         Alert.alert('Error', `Failed to open ${action.name}`);
       }
     } catch (error) {
       console.error('Error executing action:', error);
+      console.log('Error details:', JSON.stringify(error, null, 2));
       Alert.alert('Error', `Failed to execute ${action.name}`);
     } finally {
       setExecutingAction(null);
+      console.log('=== END QUICK ACTION DEBUG ===');
     }
   };
 

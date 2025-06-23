@@ -34,7 +34,8 @@
         "POST_NOTIFICATIONS",
         "VIBRATE",
         "RECEIVE_BOOT_COMPLETED",
-        "SCHEDULE_EXACT_ALARM"
+        "SCHEDULE_EXACT_ALARM",
+        "CALL_PHONE"
       ]
     },
     "web": {

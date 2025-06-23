@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Linking, Platform } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
+import { Alert, Linking, Platform } from 'react-native';
 import { Contact } from '../context/ContactsContext';
 
 export interface QuickAction {
@@ -252,22 +253,70 @@ class QuickActionsService {
   // Make a phone call
   private async makePhoneCall(contact: Contact): Promise<boolean> {
     if (!contact.phoneNumbers || contact.phoneNumbers.length === 0) {
+      console.log('No phone numbers available for contact:', contact.name);
       return false;
     }
 
     const phoneNumber = contact.phoneNumbers[0].number;
-    const url = `tel:${phoneNumber}`;
+    const cleanNumber = phoneNumber.replace(/[^\d+]/g, ''); // Remove non-digit characters except +
     
-    try {
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
+    console.log('=== PHONE CALL DEBUG ===');
+    console.log('Contact:', contact.name);
+    console.log('Original phone number:', phoneNumber);
+    console.log('Clean phone number:', cleanNumber);
+    console.log('Platform:', Platform.OS);
+    
+    // Try different URL schemes directly without checking canOpenURL first
+    const urlSchemes = [
+      `tel:${cleanNumber}`,
+      `tel://${cleanNumber}`,
+      `call:${cleanNumber}`,
+      `callto:${cleanNumber}`
+    ];
+    
+    for (const url of urlSchemes) {
+      try {
+        console.log('Trying to open URL directly:', url);
         await Linking.openURL(url);
+        console.log('Successfully opened URL:', url);
+        return true;
+      } catch (error) {
+        console.log('Failed to open URL:', url, error.message);
+        // Continue to next URL scheme
+      }
+    }
+    
+    // If all URL schemes fail, try a different approach
+    try {
+      console.log('Trying fallback approach with Intent...');
+      // For Android, try using the Intent approach
+      if (Platform.OS === 'android') {
+        const intentUrl = `intent://dial/${cleanNumber}#Intent;scheme=tel;package=com.android.dialer;end`;
+        await Linking.openURL(intentUrl);
+        console.log('Successfully opened Intent URL');
         return true;
       }
     } catch (error) {
-      console.error('Error making phone call:', error);
+      console.log('Intent approach also failed:', error.message);
     }
     
+    // Final fallback: Show user the phone number and let them dial manually
+    console.log('All automatic methods failed, showing manual dial option');
+    Alert.alert(
+      'Phone Dialer Not Available',
+      `Phone number: ${phoneNumber}\n\nThis device doesn't support automatic phone dialing. Please dial the number manually.`,
+      [
+        { 
+          text: 'Copy Number', 
+          onPress: () => {
+            Clipboard.setString(phoneNumber);
+          }
+        },
+        { text: 'OK', style: 'cancel' }
+      ]
+    );
+    
+    console.log('=== END PHONE CALL DEBUG ===');
     return false;
   }
 

@@ -82,7 +82,7 @@ const PhotoButton = styled(Button)`
   elevation: 2;
 `;
 
-const GroupRow = styled.View`
+const GroupRow = styled.ScrollView`
   flex-direction: row;
   margin-bottom: 8px;
 `;
@@ -261,8 +261,9 @@ export default function EditContactScreen() {
       return;
     }
 
-    editContact(id, {
-      name: `${firstName} ${lastName}`.trim(),
+    const name = `${firstName} ${lastName}`.trim();
+    editContact(id, { 
+      name,
       firstName: firstName.trim() || undefined,
       lastName: lastName.trim() || undefined,
       company: company.trim() || undefined,
@@ -280,11 +281,11 @@ export default function EditContactScreen() {
       imageUri,
       phoneNumbers: phoneNumbers.map(phone => ({
         ...phone,
-        type: phone.type as 'mobile' | 'work' | 'home' | 'other'
+        type: phone.type as "mobile" | "work" | "home" | "other"
       })),
       emailAddresses: emailAddresses.map(email => ({
         ...email,
-        type: email.type as 'personal' | 'work' | 'other'
+        type: email.type as "work" | "other" | "personal"
       }))
     });
     router.back();
@@ -554,7 +555,7 @@ export default function EditContactScreen() {
           <Card.Content>
             <SectionHeader>Group & Settings</SectionHeader>
             <Text style={{ marginBottom: 8 }}>Group</Text>
-            <GroupRow>
+            <GroupRow horizontal showsHorizontalScrollIndicator={false}>
               {commonGroups.map(g => (
                 <Chip
                   key={g}
