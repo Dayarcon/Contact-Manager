@@ -1,11 +1,10 @@
 import React from 'react';
-import { Card, Chip, IconButton, Text, useTheme } from 'react-native-paper';
+import { Card, IconButton, Text, useTheme } from 'react-native-paper';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import styled from 'styled-components/native';
 
 const TimelineContainer = styled.ScrollView`
   flex: 1;
-  padding: 16px;
 `;
 
 const TimelineItem = styled(Card)`
@@ -17,7 +16,7 @@ const TimelineItem = styled(Card)`
   shadow-radius: 8px;
   background-color: white;
   border-left-width: 4px;
-  border-left-color: #6200ee;
+  border-left-color: white;
 `;
 
 const TimelineContent = styled.View`
@@ -148,6 +147,30 @@ const getEventIcon = (type: string) => {
       return 'cake-variant';
     case 'anniversary':
       return 'heart';
+    case 'share':
+      return 'share';
+    case 'map':
+      return 'map';
+    case 'video_call':
+      return 'video';
+    case 'custom':
+      return 'star-outline';
+    case 'whatsapp':
+      return 'whatsapp';
+    case 'instagram':
+      return 'instagram';
+    case 'facebook':
+      return 'facebook';
+    case 'twitter':
+      return 'twitter';
+    case 'linkedin':
+      return 'linkedin';
+    case 'youtube':
+      return 'youtube';
+    case 'pinterest':
+      return 'pinterest';
+    case 'edit':
+      return 'pencil';
     default:
       return 'circle';
   }
@@ -236,9 +259,8 @@ export default function ContactTimeline({
   const renderTimelineEvent = (event: TimelineEvent, index: number) => {
     const icon = getEventIcon(event.type);
     const color = getEventColor(event.type);
-    const title = getEventTitle(event.type, event.metadata);
-    const timestamp = formatTimestamp(event.timestamp);
 
+    const timestamp = formatTimestamp(event.timestamp);
     return (
       <Animated.View
         key={event.id}
@@ -257,15 +279,12 @@ export default function ContactTimeline({
               </TimelineIcon>
               
               <TimelineInfo>
-                <TimelineTitle>{title}</TimelineTitle>
+
                 <TimelineSubtitle>{event.description}</TimelineSubtitle>
                 <TimelineTime>{timestamp}</TimelineTime>
               </TimelineInfo>
             </TimelineHeader>
             
-            {event.description && (
-              <TimelineDescription>{event.description}</TimelineDescription>
-            )}
           </TimelineContent>
         </TimelineItem>
       </Animated.View>

@@ -1,6 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
-import React from 'react';
+import React, { forwardRef, useImperativeHandle } from 'react';
 import { Alert, Dimensions, StyleSheet, TouchableOpacity, Vibration, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Avatar, Chip, IconButton, Text, TouchableRipple, useTheme } from 'react-native-paper';
@@ -39,23 +39,41 @@ interface ContactListItemProps {
   onToggleFavorite: (id: string) => void;
   onToggleVIP: (id: string) => void;
   onPress: (contact: any) => void;
+  onSwipeOpen?: (contactId: string) => void;
 }
 
-export default function ContactListItem({ 
+export interface ContactListItemRef {
+  close: () => void;
+  closeImmediate: () => void;
+}
+
+const ContactListItem = forwardRef<ContactListItemRef, ContactListItemProps>(({ 
   contact, 
   onEdit, 
   onDelete, 
   onToggleFavorite, 
   onToggleVIP,
-  onPress 
-}: ContactListItemProps) {
+  onPress,
+  onSwipeOpen
+}, ref) => {
   const theme = useTheme();
   const initials = getInitials(contact.name);
   const avatarColor = getAvatarColor(contact);
+  const swipeableRef = React.useRef<Swipeable>(null);
   
   // Get primary phone number for quick actions
   const primaryPhone = contact.phoneNumbers?.find((p: any) => p.isPrimary)?.number || 
                       contact.phoneNumbers?.[0]?.number || '';
+
+  useImperativeHandle(ref, () => ({
+    close: () => {
+      swipeableRef.current?.close();
+    },
+    closeImmediate: () => {
+      // Close immediately by calling close without any delay
+      swipeableRef.current?.close();
+    }
+  }));
 
   const handleCall = async () => {
     if (primaryPhone) {
@@ -135,6 +153,12 @@ export default function ContactListItem({
     onToggleVIP(contact.id);
   };
 
+  const handleSwipeOpen = () => {
+    if (onSwipeOpen) {
+      onSwipeOpen(contact.id);
+    }
+  };
+
   const renderRightActions = () => (
     <View style={styles.swipeActionContainer}>
       {/* Call Action */}
@@ -197,11 +221,13 @@ export default function ContactListItem({
 
   return (
     <Swipeable
+      ref={swipeableRef}
       renderRightActions={renderRightActions}
       rightThreshold={60}
       overshootRight={false}
       friction={1.5}
       enableTrackpadTwoFingerGesture={true}
+      onSwipeableOpen={handleSwipeOpen}
     >
       <TouchableRipple onPress={() => onPress(contact)} rippleColor="rgba(0,0,0,0.1)">
         <View style={styles.contactContent}>
@@ -304,7 +330,7 @@ export default function ContactListItem({
       </TouchableRipple>
     </Swipeable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   swipeActionContainer: {
@@ -439,4 +465,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     pointerEvents: 'none',
   },
-}); 
+});
+
+export default ContactListItem; 

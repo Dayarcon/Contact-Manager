@@ -1,11 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, FlatList, ScrollView, View } from 'react-native';
 import { Button, Card, Chip, FAB, IconButton, Menu, Snackbar, Text, TextInput, useTheme } from 'react-native-paper';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import styled from 'styled-components/native';
-import ContactListItem from '../../components/ContactListItem';
+import ContactListItem, { ContactListItemRef } from '../../components/ContactListItem';
 import { useContacts } from '../../context/ContactsContext';
 
 const { width, height } = Dimensions.get('window');
@@ -184,6 +184,10 @@ const commonGroups = ["Family", "Work", "Client", "Friends", "Emergency"];
 export default function HomeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  
+  // Swipe state management
+  const swipeRefs = useRef<{ [key: string]: ContactListItemRef | null }>({});
+  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   
   // Try to access theme with error handling
   let theme;
@@ -395,13 +399,6 @@ export default function HomeScreen() {
   };
 
   const clearAllFilters = () => {
-    setShowFavorites(false);
-    setShowVIP(false);
-    setSelectedGroup(null);
-    setSelectedLabel(null);
-    setShowEmergency(false);
-    setShowRecent(false);
-    setSearch('');
     setSearchFilters({
       name: true,
       company: true,
@@ -414,6 +411,17 @@ export default function HomeScreen() {
     });
   };
 
+  const handleSwipeOpen = (contactId: string) => {
+    // Close any previously open swipe immediately
+    if (openSwipeId && openSwipeId !== contactId) {
+      const prevRef = swipeRefs.current[openSwipeId];
+      if (prevRef) {
+        prevRef.closeImmediate();
+      }
+    }
+    setOpenSwipeId(contactId);
+  };
+
   const stats = getContactStats?.() || { total: 0, favorites: 0, vip: 0, groups: {}, recent: 0 };
 
   const renderContact = ({ item, index }: { item: any; index: number }) => {
@@ -422,6 +430,9 @@ export default function HomeScreen() {
         entering={FadeInUp.delay(index * 80).springify()}
       >
         <ContactListItem
+          ref={(ref) => {
+            swipeRefs.current[item.id] = ref;
+          }}
           contact={item}
           onEdit={(id) => router.push({ pathname: '/edit-contact', params: { id } })}
           onDelete={(id) => {
@@ -442,6 +453,7 @@ export default function HomeScreen() {
           onPress={(contact) => {
             router.push({ pathname: '/contact-details', params: { id: contact.id } });
           }}
+          onSwipeOpen={handleSwipeOpen}
         />
       </Animated.View>
     );

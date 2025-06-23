@@ -5,6 +5,22 @@ import GeoLocationService from '../services/GeoLocationService';
 import ScheduledMessagingService from '../services/ScheduledMessagingService';
 import SmartRemindersService from '../services/SmartRemindersService';
 
+export interface InteractionHistoryItem {
+  id: string;
+  type: 'call' | 'sms' | 'email' | 'visit' | 'note' | 'reminder' | 'share' | 'copy' | 'quick_action' | 'website' | 'map' | 'video_call' | 'custom';
+  timestamp: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+    address?: string;
+  };
+  duration?: number;
+  note?: string;
+  attachmentUri?: string;
+  source: 'auto' | 'manual';
+  metadata?: any;
+}
+
 export type PhoneNumber = {
   id: string;
   number: string;
@@ -38,7 +54,7 @@ export type Contact = {
   isVIP: boolean;
   group: string;
   notes?: string;
-  history?: { type: string; detail: string; date: string }[];
+  history?: InteractionHistoryItem[];
   imageUri?: string;
   isEmergencyContact?: boolean;
   emergencyContact?: string;
@@ -57,7 +73,7 @@ interface ContactsContextType {
   toggleVIP: (id: string) => void;
   importContacts: (imported: Omit<Contact, 'id' | 'isFavorite' | 'isVIP' | 'createdAt' | 'updatedAt'>[]) => void;
   setContacts: React.Dispatch<React.SetStateAction<Contact[]>>;
-  addHistoryEvent: (id: string, event: { type: string; detail: string; date: string }) => void;
+  addHistoryEvent: (id: string, event: InteractionHistoryItem) => void;
   mergeContacts: (primaryId: string, secondaryId: string) => void;
   findDuplicates: () => { contact1: Contact; contact2: Contact; similarity: number; reason: string }[];
   getContactStats: () => { total: number; favorites: number; vip: number; groups: Record<string, number>; recent: number };
@@ -105,10 +121,10 @@ const mockContacts: Contact[] = [
     group: 'Work',
     labels: ['Developer', 'Tech'],
     history: [
-      { type: 'call', detail: 'Called about project collaboration', date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
-      { type: 'email', detail: 'Sent project proposal', date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() },
-      { type: 'meeting', detail: 'Team sync meeting', date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-      { type: 'note', detail: 'Great technical skills, good team player', date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() }
+      { id: 'h1', type: 'call', note: 'Called about project collaboration', timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), source: 'auto' },
+      { id: 'h2', type: 'email', note: 'Sent project proposal', timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), source: 'auto' },
+      { id: 'h3', type: 'custom', note: 'Team sync meeting', timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), source: 'manual', metadata: { originalType: 'meeting' } },
+      { id: 'h4', type: 'note', note: 'Great technical skills, good team player', timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), source: 'manual' }
     ],
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z'
@@ -136,9 +152,9 @@ const mockContacts: Contact[] = [
     emergencyContact: 'Emergency contact for family',
     labels: ['Family', 'Emergency'],
     history: [
-      { type: 'call', detail: 'Called to check in', date: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString() },
-      { type: 'message', detail: 'Sent birthday wishes', date: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString() },
-      { type: 'birthday', detail: 'Birthday celebration', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() }
+      { id: 'h5', type: 'call', note: 'Called to check in', timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), source: 'auto' },
+      { id: 'h6', type: 'sms', note: 'Sent birthday wishes', timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), source: 'auto', metadata: { originalType: 'message' } },
+      { id: 'h7', type: 'custom', note: 'Birthday celebration', timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), source: 'manual', metadata: { originalType: 'birthday' } }
     ],
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z'
@@ -165,8 +181,8 @@ const mockContacts: Contact[] = [
     group: 'Client',
     labels: ['Client', 'Retail'],
     history: [
-      { type: 'email', detail: 'Sent invoice for services', date: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString() },
-      { type: 'meeting', detail: 'Business review meeting', date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() }
+      { id: 'h8', type: 'email', note: 'Sent invoice for services', timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), source: 'auto' },
+      { id: 'h9', type: 'custom', note: 'Business review meeting', timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), source: 'manual', metadata: { originalType: 'meeting' } }
     ],
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z'
@@ -193,10 +209,10 @@ const mockContacts: Contact[] = [
     group: 'Work',
     labels: ['Legal', 'Professional'],
     history: [
-      { type: 'call', detail: 'Legal consultation call', date: new Date(Date.now() - 30 * 60 * 1000).toISOString() },
-      { type: 'email', detail: 'Sent legal documents', date: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString() },
-      { type: 'meeting', detail: 'Contract review meeting', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
-      { type: 'note', detail: 'Excellent legal expertise, very professional', date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString() }
+      { id: 'h10', type: 'call', note: 'Legal consultation call', timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(), source: 'auto' },
+      { id: 'h11', type: 'email', note: 'Sent legal documents', timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), source: 'auto' },
+      { id: 'h12', type: 'custom', note: 'Contract review meeting', timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), source: 'manual', metadata: { originalType: 'meeting' } },
+      { id: 'h13', type: 'note', note: 'Excellent legal expertise, very professional', timestamp: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), source: 'manual' }
     ],
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z'
@@ -222,8 +238,8 @@ const mockContacts: Contact[] = [
     group: 'Client',
     labels: ['Security', 'Client'],
     history: [
-      { type: 'call', detail: 'Security consultation', date: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString() },
-      { type: 'meeting', detail: 'Security assessment meeting', date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() }
+      { id: 'h14', type: 'call', note: 'Security consultation', timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), source: 'auto' },
+      { id: 'h15', type: 'custom', note: 'Security assessment meeting', timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(), source: 'manual', metadata: { originalType: 'meeting' } }
     ],
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z'
@@ -342,7 +358,7 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
   };
 
   // Add a history event (e.g., call, meeting)
-  const addHistoryEvent = (id: string, event: { type: string; detail: string; date: string }) => {
+  const addHistoryEvent = (id: string, event: InteractionHistoryItem) => {
     setContacts(prev =>
       prev.map(c =>
         c.id === id
@@ -411,9 +427,12 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
         ...(contact1.history || []),
         ...(contact2.history || []),
         {
-          type: 'merge',
-          detail: `Merged with ${contact2.name}`,
-          date: new Date().toISOString()
+          id: `merge-${Date.now()}`,
+          type: 'custom',
+          note: `Merged with ${contact2.name}`,
+          timestamp: new Date().toISOString(),
+          source: 'manual',
+          metadata: { originalType: 'merge' }
         }
       ],
       imageUri: contact1.imageUri || contact2.imageUri,
