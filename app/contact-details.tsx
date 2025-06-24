@@ -450,7 +450,13 @@ export default function ContactDetailsScreen() {
       
       if (supported) {
         await Linking.openURL(url);
-        addHistoryEvent?.(contact.id, { type: 'whatsapp', detail: 'Opened WhatsApp', date: new Date().toISOString() });
+        addHistoryEvent?.(contact.id, {
+          id: Date.now().toString(),
+          type: 'sms',
+          note: 'Opened WhatsApp',
+          timestamp: new Date().toISOString(),
+          source: 'manual'
+        });
         return;
       }
       
@@ -460,7 +466,13 @@ export default function ContactDetailsScreen() {
       
       if (supported) {
         await Linking.openURL(url);
-        addHistoryEvent?.(contact.id, { type: 'whatsapp', detail: 'Opened WhatsApp Web', date: new Date().toISOString() });
+        addHistoryEvent?.(contact.id, {
+          id: Date.now().toString(),
+          type: 'sms',
+          note: 'Opened WhatsApp',
+          timestamp: new Date().toISOString(),
+          source: 'manual'
+        });
         return;
       }
       
@@ -485,7 +497,13 @@ export default function ContactDetailsScreen() {
       
       if (supported) {
         await Linking.openURL(url);
-        addHistoryEvent?.(contact.id, { type: 'video_call', detail: 'Opened Google Meet', date: new Date().toISOString() });
+        addHistoryEvent?.(contact.id, {
+          id: Date.now().toString(),
+          type: 'video_call',
+          note: 'Opened Google Meet',
+          timestamp: new Date().toISOString(),
+          source: 'manual'
+        });
         return;
       }
       
@@ -495,7 +513,13 @@ export default function ContactDetailsScreen() {
       
       if (supported) {
         await Linking.openURL(url);
-        addHistoryEvent?.(contact.id, { type: 'video_call', detail: 'Opened Zoom', date: new Date().toISOString() });
+        addHistoryEvent?.(contact.id, {
+          id: Date.now().toString(),
+          type: 'video_call',
+          note: 'Opened Zoom',
+          timestamp: new Date().toISOString(),
+          source: 'manual'
+        });
         return;
       }
       
@@ -505,7 +529,13 @@ export default function ContactDetailsScreen() {
       
       if (supported) {
         await Linking.openURL(url);
-        addHistoryEvent?.(contact.id, { type: 'video_call', detail: 'Opened FaceTime', date: new Date().toISOString() });
+        addHistoryEvent?.(contact.id, {
+          id: Date.now().toString(),
+          type: 'video_call',
+          note: 'Opened FaceTime',
+          timestamp: new Date().toISOString(),
+          source: 'manual'
+        });
         return;
       }
       
@@ -531,7 +561,13 @@ export default function ContactDetailsScreen() {
       
       if (supported) {
         await Linking.openURL(url);
-        addHistoryEvent?.(contact.id, { type: 'website', detail: 'Visited website', date: new Date().toISOString() });
+        addHistoryEvent?.(contact.id, {
+          id: Date.now().toString(),
+          type: 'website',
+          note: 'Visited website',
+          timestamp: new Date().toISOString(),
+          source: 'manual'
+        });
       } else {
         Alert.alert('Error', 'Cannot open website on this device.');
       }
@@ -553,7 +589,13 @@ export default function ContactDetailsScreen() {
       
       if (supported) {
         await Linking.openURL(url);
-        addHistoryEvent?.(contact.id, { type: 'map', detail: 'Viewed location', date: new Date().toISOString() });
+        addHistoryEvent?.(contact.id, {
+          id: Date.now().toString(),
+          type: 'map',
+          note: 'Viewed location',
+          timestamp: new Date().toISOString(),
+          source: 'manual'
+        });
       } else {
         Alert.alert('Error', 'Cannot open maps app on this device.');
       }
@@ -714,10 +756,12 @@ export default function ContactDetailsScreen() {
       }
       
       // Add to history
-      addHistoryEvent?.(contact.id, { 
-        type: 'share', 
-        detail: `Shared contact as ${format.toUpperCase()}`, 
-        date: new Date().toISOString() 
+      addHistoryEvent?.(contact.id, {
+        id: Date.now().toString(),
+        type: 'share',
+        note: `Shared contact as ${format.toUpperCase()}`,
+        timestamp: new Date().toISOString(),
+        source: 'manual'
       });
       
     } catch (error) {
@@ -755,10 +799,12 @@ export default function ContactDetailsScreen() {
       );
       
       // Add to history
-      addHistoryEvent?.(contact.id, { 
-        type: 'copy', 
-        detail: 'Copied contact information', 
-        date: new Date().toISOString() 
+      addHistoryEvent?.(contact.id, {
+        id: Date.now().toString(),
+        type: 'copy',
+        note: 'Copied contact information',
+        timestamp: new Date().toISOString(),
+        source: 'manual'
       });
       
     } catch (error) {
@@ -820,11 +866,11 @@ export default function ContactDetailsScreen() {
 
   // Generate timeline events from contact history
   const timelineEvents = contact?.history?.map((event, index) => ({
-    id: `event-${index}`,
+    id: event.id,
     type: event.type as any,
-    title: event.detail,
-    description: event.detail,
-    timestamp: event.date,
+    title: event.note || '',
+    description: event.note || '',
+    timestamp: event.timestamp,
     tags: [contact.group, contact.businessType].filter(Boolean)
   })) || [];
 
@@ -1039,12 +1085,19 @@ export default function ContactDetailsScreen() {
               contact={contact}
               showUnavailable={true}
               maxActions={6}
-              onActionExecuted={() => {
+              onActionExecuted={(action) => {
                 // Add a history event when a quick action is executed
-                addHistoryEvent?.(contact.id, { 
-                  type: 'quick_action', 
-                  detail: 'Used quick action', 
-                  date: new Date().toISOString() 
+                addHistoryEvent?.(contact.id, {
+                  id: Date.now().toString(),
+                  type: action.id === 'facetime' ? 'video_call'
+                    : action.id === 'phone_call' ? 'call'
+                    : action.id === 'sms' ? 'sms'
+                    : action.id === 'whatsapp' || action.id === 'telegram' ? 'sms'
+                    : action.id === 'email' ? 'email'
+                    : 'quick_action',
+                  note: `Used quick action: ${action.name}`,
+                  timestamp: new Date().toISOString(),
+                  source: 'manual'
                 });
               }}
             />
@@ -1074,8 +1127,16 @@ export default function ContactDetailsScreen() {
                           icon="phone"
                           size={20}
                           onPress={() => {
-                            addHistoryEvent?.(contact.id, { type: 'call', detail: 'Called contact', date: new Date().toISOString() });
-                            // Handle call action
+                            addHistoryEvent?.(contact.id, {
+                              id: Date.now().toString(),
+                              type: 'call',
+                              note: `Called ${phone.type} number`,
+                              timestamp: new Date().toISOString(),
+                              source: 'manual'
+                            });
+                            if (phone.number) {
+                              Linking.openURL(`tel:${phone.number}`);
+                            }
                           }}
                         />
                       </Row>
@@ -1101,8 +1162,13 @@ export default function ContactDetailsScreen() {
                           icon="email"
                           size={20}
                           onPress={() => {
-                            addHistoryEvent?.(contact.id, { type: 'email', detail: 'Sent email', date: new Date().toISOString() });
-                            // Handle email action
+                            addHistoryEvent?.(contact.id, {
+                              id: Date.now().toString(),
+                              type: 'email',
+                              note: 'Sent email',
+                              timestamp: new Date().toISOString(),
+                              source: 'manual'
+                            });
                           }}
                         />
                       </Row>

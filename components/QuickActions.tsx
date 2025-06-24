@@ -14,7 +14,7 @@ import QuickActionsService, { QuickAction } from '../services/QuickActionsServic
 
 interface QuickActionsProps {
   contact: Contact;
-  onActionExecuted?: () => void;
+  onActionExecuted?: (action: QuickAction) => void;
   showUnavailable?: boolean;
   maxActions?: number;
 }
@@ -86,7 +86,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({
       
       if (success) {
         console.log('Action executed successfully');
-        onActionExecuted?.();
+        onActionExecuted?.(action);
       } else {
         console.log('Action execution failed');
         Alert.alert('Error', `Failed to open ${action.name}`);

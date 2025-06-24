@@ -263,7 +263,7 @@ export default function ContactTimeline({
     const timestamp = formatTimestamp(event.timestamp);
     return (
       <Animated.View
-        key={event.id}
+        key={event.id || index}
         entering={FadeInUp.delay(index * 100).springify()}
       >
         <TimelineItem>
