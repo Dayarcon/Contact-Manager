@@ -163,10 +163,199 @@ export function useGoogleAuth() {
     })) || [];
   };
 
+  const createGoogleContact = async (contact: any) => {
+    try {
+      if (!accessToken) {
+        throw new Error('Not signed in');
+      }
+
+      const response = await fetch(
+        'https://people.googleapis.com/v1/people:createContact',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            names: [
+              {
+                givenName: contact.firstName || '',
+                familyName: contact.lastName || '',
+                displayName: contact.name,
+              },
+            ],
+            phoneNumbers: contact.phoneNumbers.map((phone: any) => ({
+              value: phone.number,
+              type: phone.type.toLowerCase(),
+            })),
+            emailAddresses: contact.emailAddresses.map((email: any) => ({
+              value: email.email,
+              type: email.type.toLowerCase(),
+            })),
+            organizations: contact.company ? [
+              {
+                name: contact.company,
+                title: contact.jobTitle,
+              },
+            ] : undefined,
+            biographies: contact.notes ? [
+              {
+                value: contact.notes,
+                contentType: 'TEXT_PLAIN',
+              },
+            ] : undefined,
+            birthdays: contact.birthday ? [
+              {
+                date: {
+                  year: new Date(contact.birthday).getFullYear(),
+                  month: new Date(contact.birthday).getMonth() + 1,
+                  day: new Date(contact.birthday).getDate(),
+                },
+              },
+            ] : undefined,
+            addresses: contact.address ? [
+              {
+                formattedValue: contact.address,
+                type: 'home',
+              },
+            ] : undefined,
+            urls: contact.website ? [
+              {
+                value: contact.website,
+                type: 'website',
+              },
+            ] : undefined,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to create Google contact');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error creating Google contact:', error);
+      throw error;
+    }
+  };
+
+  const updateGoogleContact = async (resourceName: string, contact: any) => {
+    try {
+      if (!accessToken) {
+        throw new Error('Not signed in');
+      }
+
+      const response = await fetch(
+        `https://people.googleapis.com/v1/people/${resourceName}:updateContact`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            etag: '*',
+            names: [
+              {
+                givenName: contact.firstName || '',
+                familyName: contact.lastName || '',
+                displayName: contact.name,
+              },
+            ],
+            phoneNumbers: contact.phoneNumbers.map((phone: any) => ({
+              value: phone.number,
+              type: phone.type.toLowerCase(),
+            })),
+            emailAddresses: contact.emailAddresses.map((email: any) => ({
+              value: email.email,
+              type: email.type.toLowerCase(),
+            })),
+            organizations: contact.company ? [
+              {
+                name: contact.company,
+                title: contact.jobTitle,
+              },
+            ] : undefined,
+            biographies: contact.notes ? [
+              {
+                value: contact.notes,
+                contentType: 'TEXT_PLAIN',
+              },
+            ] : undefined,
+            birthdays: contact.birthday ? [
+              {
+                date: {
+                  year: new Date(contact.birthday).getFullYear(),
+                  month: new Date(contact.birthday).getMonth() + 1,
+                  day: new Date(contact.birthday).getDate(),
+                },
+              },
+            ] : undefined,
+            addresses: contact.address ? [
+              {
+                formattedValue: contact.address,
+                type: 'home',
+              },
+            ] : undefined,
+            urls: contact.website ? [
+              {
+                value: contact.website,
+                type: 'website',
+              },
+            ] : undefined,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to update Google contact');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error updating Google contact:', error);
+      throw error;
+    }
+  };
+
+  const deleteGoogleContact = async (resourceName: string) => {
+    try {
+      if (!accessToken) {
+        throw new Error('Not signed in');
+      }
+
+      const response = await fetch(
+        `https://people.googleapis.com/v1/people/${resourceName}:deleteContact`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to delete Google contact');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error deleting Google contact:', error);
+      throw error;
+    }
+  };
+
   return {
     signIn,
     signOut,
     getContacts,
+    createGoogleContact,
+    updateGoogleContact,
+    deleteGoogleContact,
     accessToken,
     userInfo,
     loading,

@@ -4,6 +4,7 @@ import AutoTaggingService from '../services/AutoTaggingService';
 import GeoLocationService from '../services/GeoLocationService';
 import ScheduledMessagingService from '../services/ScheduledMessagingService';
 import SmartRemindersService from '../services/SmartRemindersService';
+import { useGoogleAuth } from './GoogleAuthContext';
 
 export interface InteractionHistoryItem {
   id: string;
@@ -61,6 +62,7 @@ export type Contact = {
   labels?: string[];
   createdAt: string;
   updatedAt: string;
+  googleResourceName?: string;
 };
 
 interface ContactsContextType {
@@ -249,6 +251,7 @@ const mockContacts: Contact[] = [
 export function ContactsProvider({ children }: { children: ReactNode }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { isSignedIn, createGoogleContact, updateGoogleContact, deleteGoogleContact } = useGoogleAuth();
 
   // Initialize automation services
   const [remindersService] = useState(() => SmartRemindersService.getInstance());
@@ -290,7 +293,7 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
     }
   }, [contacts, isLoading]);
 
-  const addContact = (contact: Omit<Contact, 'id' | 'isFavorite' | 'isVIP' | 'history' | 'createdAt' | 'updatedAt'>) => {
+  const addContact = async (contact: Omit<Contact, 'id' | 'isFavorite' | 'isVIP' | 'history' | 'createdAt' | 'updatedAt'>) => {
     const newContact: Contact = {
       ...contact,
       id: Date.now().toString(),
@@ -301,36 +304,71 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
       updatedAt: new Date().toISOString()
     };
 
-    setContacts(prev => {
-      const updated = [...prev, newContact];
-      
-      // Trigger automation features
-      triggerAutomationFeatures(newContact);
-      
-      return updated;
-    });
-  };
+    try {
+      // Create contact in local storage
+      setContacts(prev => {
+        const updated = [...prev, newContact];
+        triggerAutomationFeatures(newContact);
+        return updated;
+      });
 
-  const editContact = (id: string, updated: Partial<Contact>) => {
-    setContacts(prev => {
-      const updatedContacts = prev.map(contact => 
-        contact.id === id 
-          ? { ...contact, ...updated, updatedAt: new Date().toISOString() }
-          : contact
-      );
-      
-      // Trigger automation features for updated contact
-      const updatedContact = updatedContacts.find(c => c.id === id);
-      if (updatedContact) {
-        triggerAutomationFeatures(updatedContact);
+      // If signed in to Google, create contact in Google
+      if (isSignedIn) {
+        const googleContact = await createGoogleContact(newContact);
+        // Store Google resource name for future updates
+        setContacts(prev => prev.map(c => 
+          c.id === newContact.id 
+            ? { ...c, googleResourceName: googleContact.resourceName }
+            : c
+        ));
       }
-      
-      return updatedContacts;
-    });
+    } catch (error: unknown) {
+      console.error('Error adding contact:', error);
+    }
   };
 
-  const deleteContact = (id: string) => {
-    setContacts(prev => prev.filter(c => c.id !== id));
+  const editContact = async (id: string, updated: Partial<Contact>) => {
+    try {
+      setContacts(prev => {
+        const updatedContacts = prev.map(contact => 
+          contact.id === id 
+            ? { ...contact, ...updated, updatedAt: new Date().toISOString() }
+            : contact
+        );
+        
+        // Get the updated contact
+        const updatedContact = updatedContacts.find(c => c.id === id);
+        if (updatedContact) {
+          triggerAutomationFeatures(updatedContact);
+          
+          // If signed in to Google and contact has a Google resource name, update Google contact
+          if (isSignedIn && updatedContact.googleResourceName) {
+            updateGoogleContact(updatedContact.googleResourceName, updatedContact)
+              .catch((error: unknown) => console.error('Error updating Google contact:', error));
+          }
+        }
+        
+        return updatedContacts;
+      });
+    } catch (error: unknown) {
+      console.error('Error editing contact:', error);
+    }
+  };
+
+  const deleteContact = async (id: string) => {
+    try {
+      const contactToDelete = contacts.find(c => c.id === id);
+      
+      // Delete from local storage
+      setContacts(prev => prev.filter(c => c.id !== id));
+
+      // If signed in to Google and contact has a Google resource name, delete from Google
+      if (isSignedIn && contactToDelete?.googleResourceName) {
+        await deleteGoogleContact(contactToDelete.googleResourceName);
+      }
+    } catch (error: unknown) {
+      console.error('Error deleting contact:', error);
+    }
   };
 
   const toggleFavorite = (id: string) => {

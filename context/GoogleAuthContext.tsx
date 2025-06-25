@@ -8,6 +8,9 @@ interface GoogleAuthContextType {
   syncContacts: () => Promise<void>;
   loading: boolean;
   userInfo: any;
+  createGoogleContact: (contact: any) => Promise<any>;
+  updateGoogleContact: (resourceName: string, contact: any) => Promise<any>;
+  deleteGoogleContact: (resourceName: string) => Promise<boolean>;
 }
 
 const GoogleAuthContext = createContext<GoogleAuthContextType | undefined>(undefined);
@@ -25,6 +28,9 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     signIn,
     signOut,
     getContacts: syncContacts,
+    createGoogleContact,
+    updateGoogleContact,
+    deleteGoogleContact,
     loading,
     isSignedIn,
     userInfo,
@@ -37,6 +43,9 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         signIn,
         signOut,
         syncContacts,
+        createGoogleContact,
+        updateGoogleContact,
+        deleteGoogleContact,
         loading,
         userInfo,
       }}
