@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "contact-manager-app",
-    "slug": "contact-manager-app",
+    "name": "Contactly",
+    "slug": "contactly",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "contactmanagerapp",
+    "scheme": "com.freefworlds.contactly",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.contactmanagerapp",
+      "bundleIdentifier": "com.freefworlds.contactly",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app uses location to provide nearby contact suggestions and location-based features.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "This app uses location to provide nearby contact suggestions and location-based features.",
@@ -19,6 +19,11 @@
           "location",
           "remote-notification"
         ]
+      },
+      "config": {
+        "googleSignIn": {
+          "reservedClientId": "com.googleusercontent.apps.66493933765-up9oj0479db6h4qri889qva59mlv03di"
+        }
       }
     },
     "android": {
@@ -27,7 +32,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.contactmanagerapp",
+      "package": "com.freefworlds.contactly",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",

@@ -8,7 +8,9 @@ import { Alert, View } from 'react-native';
 import { Button, Card, IconButton, Snackbar, Switch, Text } from 'react-native-paper';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import styled from 'styled-components/native';
+import { GoogleSignInButton } from '../components/GoogleSignInButton';
 import { useContacts } from '../context/ContactsContext';
+import { useGoogleAuth } from '../context/GoogleAuthContext';
 import GeoLocationService from '../services/GeoLocationService';
 import QuickActionsService from '../services/QuickActionsService';
 
@@ -136,12 +138,34 @@ const FeatureDescription = styled(Text)`
   letter-spacing: 0.2px;
 `;
 
+const GoogleSection = styled(Card)`
+  margin-bottom: 20px;
+  border-radius: 24px;
+  elevation: 6;
+  shadow-color: #000;
+  shadow-opacity: 0.1;
+  shadow-radius: 16px;
+  background-color: white;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 20px;
+`;
+
+const GoogleSyncButton = styled(Button)`
+  margin-top: 12px;
+  border-radius: 16px;
+  elevation: 3;
+  shadow-color: #000;
+  shadow-opacity: 0.1;
+  shadow-radius: 8px;
+`;
+
 export default function SettingsScreen() {
   const router = useRouter();
   const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
   const [loading, setLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const { isSignedIn, signOut, syncContacts, loading: googleLoading } = useGoogleAuth();
   const [appAvailability, setAppAvailability] = useState({
     whatsapp: false,
     telegram: false,
@@ -368,12 +392,33 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleGoogleSync = async () => {
+    try {
+      setSnackbar({ visible: true, message: 'Syncing contacts with Google...' });
+      await syncContacts();
+      setSnackbar({ visible: true, message: 'Contacts synced successfully!' });
+    } catch (error) {
+      console.error('Error syncing contacts:', error);
+      setSnackbar({ visible: true, message: 'Failed to sync contacts' });
+    }
+  };
+
+  const handleGoogleSignOut = async () => {
+    try {
+      await signOut();
+      setSnackbar({ visible: true, message: 'Signed out from Google' });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      setSnackbar({ visible: true, message: 'Failed to sign out' });
+    }
+  };
+
   return (
     <Container>
       <HeaderGradient
-        colors={['#6200ee', '#7c4dff', '#9c27b0']}
+        colors={['#f0f2f5', '#ffffff']}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        end={{ x: 0, y: 1 }}
       />
       
       <View style={{ 
@@ -776,6 +821,39 @@ export default function SettingsScreen() {
               </ExportButton>
             </Card.Content>
           </ExportSection>
+        </Animated.View>
+
+        <Animated.View entering={FadeInUp.delay(400).springify()}>
+          <GoogleSection>
+            <SectionHeader>Google Contacts</SectionHeader>
+            <InfoText>
+              Connect your Google account to sync your contacts between devices and keep them backed up.
+            </InfoText>
+            {!isSignedIn ? (
+              <GoogleSignInButton
+                onSignInComplete={() => setSnackbar({ visible: true, message: 'Successfully signed in with Google!' })}
+              />
+            ) : (
+              <>
+                <GoogleSyncButton
+                  mode="contained"
+                  onPress={handleGoogleSync}
+                  loading={googleLoading}
+                  icon="sync"
+                >
+                  Sync Contacts
+                </GoogleSyncButton>
+                <GoogleSyncButton
+                  mode="outlined"
+                  onPress={handleGoogleSignOut}
+                  loading={googleLoading}
+                  icon="logout"
+                >
+                  Sign Out
+                </GoogleSyncButton>
+              </>
+            )}
+          </GoogleSection>
         </Animated.View>
       </ContentScroll>
 

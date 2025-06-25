@@ -7,6 +7,7 @@ import { DefaultTheme as PaperDefaultTheme, Provider as PaperProvider } from 're
 import 'react-native-reanimated';
 
 import { ContactsProvider } from '../context/ContactsContext';
+import { GoogleAuthProvider } from '../context/GoogleAuthContext';
 import GeoLocationService from '../services/GeoLocationService';
 import NotificationService from '../services/NotificationService';
 
@@ -47,20 +48,22 @@ export default function RootLayout() {
   return (
     <PaperProvider theme={PaperDefaultTheme}>
       <NavigationThemeProvider value={DefaultTheme}>
-        <ContactsProvider>
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="add-contact" options={{ headerShown: false }} />
-            <Stack.Screen name="contact-details" options={{ headerShown: false }} />
-            <Stack.Screen name="settings" options={{ headerShown: false }} />
-            <Stack.Screen name="vip-settings" options={{ headerShown: false }} />
-            <Stack.Screen name="automation-settings" options={{ headerShown: false }} />
-            <Stack.Screen name="duplicates" options={{ headerShown: false }} />
-            <Stack.Screen name="location-settings" options={{ headerShown: false }} />
-            <Stack.Screen name="nearby-contacts" options={{ headerShown: false }} />
-          </Stack>
-          <StatusBar style="dark" />
-        </ContactsProvider>
+        <GoogleAuthProvider>
+          <ContactsProvider>
+            <Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="add-contact" options={{ headerShown: false }} />
+              <Stack.Screen name="contact-details" options={{ headerShown: false }} />
+              <Stack.Screen name="settings" options={{ headerShown: false }} />
+              <Stack.Screen name="vip-settings" options={{ headerShown: false }} />
+              <Stack.Screen name="automation-settings" options={{ headerShown: false }} />
+              <Stack.Screen name="duplicates" options={{ headerShown: false }} />
+              <Stack.Screen name="location-settings" options={{ headerShown: false }} />
+              <Stack.Screen name="nearby-contacts" options={{ headerShown: false }} />
+            </Stack>
+            <StatusBar style="dark" />
+          </ContactsProvider>
+        </GoogleAuthProvider>
       </NavigationThemeProvider>
     </PaperProvider>
   );
