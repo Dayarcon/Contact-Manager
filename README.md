@@ -383,3 +383,51 @@ This update brings significant improvements to the contact management experience
 9. **Contact Sharing** - Share contacts as text or vCard format with native sharing capabilities
 
 The app now provides a complete contact management solution with real notifications, multi-platform communication capabilities, contact sharing, and a modern, professional user interface!
+
+## 🔧 Google OAuth Configuration
+
+### Setup Instructions
+
+1. **Google Cloud Console Configuration**
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select an existing one
+   - Enable the Google+ API and Google People API
+   - Go to "Credentials" and create OAuth 2.0 Client IDs for:
+     - Android: Use package name `com.freefworlds.contactly`
+     - iOS: Use bundle ID `com.freefworlds.contactly`
+     - Web: Use redirect URI `https://auth.expo.io/@freefworlds/contactly`
+
+2. **Client IDs**
+   - Update the client IDs in `hooks/useGoogleAuth.ts` with your actual Google Cloud Console client IDs:
+     - `GOOGLE_WEB_CLIENT_ID`: Your web client ID
+     - `GOOGLE_IOS_CLIENT_ID`: Your iOS client ID
+
+3. **Android Configuration**
+   - Ensure your `android/app/build.gradle` includes the Google Play Services dependency
+   - The app uses `@react-native-google-signin/google-signin` for native authentication
+
+### Authentication Flow Fix
+
+The app now properly handles Google OAuth authentication using the native Google Sign-In library with the following improvements:
+
+- **Native Authentication**: Uses `@react-native-google-signin/google-signin` for reliable native authentication
+- **Success Callback**: Automatically navigates to home screen after successful authentication
+- **Error Handling**: Proper error messages and fallback mechanisms
+- **Token Management**: Secure token storage and automatic refresh
+- **No Redirect Issues**: Native authentication eliminates redirect URI problems
+
+### Troubleshooting
+
+If you encounter authentication issues:
+
+1. **Check Google Cloud Console**: Ensure all client IDs are properly configured
+2. **Verify Client IDs**: Make sure the client IDs match your Google Cloud Console setup
+3. **Check Network**: Ensure the device has internet connectivity
+4. **Clear Cache**: Clear app cache and try again
+5. **Check Play Services**: Ensure Google Play Services is available on Android devices
+
+### Migration from expo-auth-session
+
+The app has been migrated from `expo-auth-session` to `@react-native-google-signin/google-signin` to resolve module compatibility issues and provide more reliable authentication.
+
+## 📦 Installation

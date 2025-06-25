@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, FlatList, ScrollView, TouchableOpacity, View } from 'react-native';
 import { Avatar, Button, Card, Chip, FAB, IconButton, Menu, Snackbar, Text, TextInput, useTheme } from 'react-native-paper';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -278,8 +278,25 @@ export default function HomeScreen() {
     getContactStats: () => ({ total: 0, favorites: 0, vip: 0, groups: {}, recent: 0 })
   };
 
-  const { isSignedIn, userInfo, signIn, signOut } = useGoogleAuth();
+  const { isSignedIn, userInfo, signIn, signOut, setSignInSuccessCallback } = useGoogleAuth();
   const [isAuthLoading, setIsAuthLoading] = useState(false);
+
+  // Set up success callback for Google authentication
+  const handleSignInSuccess = useCallback(() => {
+    console.log('Google sign-in successful, staying on home screen');
+    // Ensure we're on the home screen
+    if (router.canGoBack()) {
+      // If we can go back, we might be on a different screen, so navigate to home
+      router.replace('/(tabs)');
+    }
+    // Show success message
+    setSnackbar({ visible: true, message: 'Successfully signed in with Google! 🎉' });
+  }, [router]);
+
+  useEffect(() => {
+    console.log('Setting up Google sign-in success callback');
+    setSignInSuccessCallback(handleSignInSuccess);
+  }, [setSignInSuccessCallback, handleSignInSuccess]);
 
   const [search, setSearch] = useState('');
   const [searchMode, setSearchMode] = useState(false);
@@ -637,11 +654,17 @@ export default function HomeScreen() {
       setIsAuthLoading(true);
       if (isSignedIn) {
         await signOut();
+        setSnackbar({ visible: true, message: 'Successfully signed out from Google' });
       } else {
         await signIn();
+        // Success callback will handle the success message
       }
     } catch (error) {
       console.error('Google auth error:', error);
+      setSnackbar({ 
+        visible: true, 
+        message: 'Failed to authenticate with Google. Please try again.' 
+      });
     } finally {
       setIsAuthLoading(false);
     }

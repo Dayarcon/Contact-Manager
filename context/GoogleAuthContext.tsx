@@ -11,6 +11,7 @@ interface GoogleAuthContextType {
   createGoogleContact: (contact: any) => Promise<any>;
   updateGoogleContact: (resourceName: string, contact: any) => Promise<any>;
   deleteGoogleContact: (resourceName: string) => Promise<boolean>;
+  setSignInSuccessCallback: (callback: () => void) => void;
 }
 
 const GoogleAuthContext = createContext<GoogleAuthContextType | undefined>(undefined);
@@ -31,6 +32,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     createGoogleContact,
     updateGoogleContact,
     deleteGoogleContact,
+    setSignInSuccessCallback,
     loading,
     isSignedIn,
     userInfo,
@@ -46,6 +48,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         createGoogleContact,
         updateGoogleContact,
         deleteGoogleContact,
+        setSignInSuccessCallback,
         loading,
         userInfo,
       }}

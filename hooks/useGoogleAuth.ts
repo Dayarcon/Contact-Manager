@@ -1,131 +1,63 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
-
-WebBrowser.maybeCompleteAuthSession();
 
 // Replace these with your own Google OAuth credentials
 const GOOGLE_WEB_CLIENT_ID = '66493933765-up9oj0479db6h4qri889qva59mlv03di.apps.googleusercontent.com';
 const GOOGLE_IOS_CLIENT_ID = '66493933765-up9oj0479db6h4qri889qva59mlv03di.apps.googleusercontent.com';
 const GOOGLE_ANDROID_CLIENT_ID = '66493933765-hfnt1dvsgk1h1058hdhk7v56or46m7ic.apps.googleusercontent.com';
 
+// Use the app scheme for redirect URI instead of Expo development URL
 const REDIRECT_URI = Platform.select({
   web: 'https://auth.expo.io/@freefworlds/contactly',
-  default: 'https://auth.expo.io/@freefworlds/contactly'
+  default: 'com.freefworlds.contactly://'
 });
 
 export function useGoogleAuth() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [userInfo, setUserInfo] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [onSignInSuccess, setOnSignInSuccess] = useState<(() => void) | null>(null);
+  const [hasProcessedResponse, setHasProcessedResponse] = useState(false);
 
-  // Use platform-specific client IDs
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: Platform.OS === 'android' ? GOOGLE_ANDROID_CLIENT_ID : GOOGLE_WEB_CLIENT_ID,
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: GOOGLE_IOS_CLIENT_ID,
-    scopes: ['profile', 'email'], // Start with basic scopes
-    redirectUri: Platform.OS === 'android' ? undefined : REDIRECT_URI, // Let Android handle redirect automatically
-    usePKCE: true, // Re-enable PKCE for better security
-    responseType: 'code'
-  });
-
+  // Configure Google Sign-In
   useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: GOOGLE_WEB_CLIENT_ID,
+      iosClientId: GOOGLE_IOS_CLIENT_ID,
+      offlineAccess: true,
+      hostedDomain: '',
+      forceCodeForRefreshToken: true,
+    });
+    
     checkExistingToken();
   }, []);
 
+  // Reset response processing flag when accessToken changes
   useEffect(() => {
-    console.log('OAuth response received:', response);
-    if (response?.type === 'success') {
-      // Check if we already have an access token from the response
-      if (response.authentication?.accessToken) {
-        console.log('Access token already provided by Expo OAuth');
-        const accessToken = response.authentication.accessToken;
-        setAccessToken(accessToken);
-        AsyncStorage.setItem('googleAccessToken', accessToken);
+    setHasProcessedResponse(false);
+  }, [accessToken]);
+
+  useEffect(() => {
+    if (accessToken && !hasProcessedResponse) {
+      console.log('Access token received:', accessToken);
+      setHasProcessedResponse(true);
+      
+      if (accessToken) {
+        console.log('Access token already provided by Google Sign-In');
         getUserInfo(accessToken);
         setLoading(false);
-      } else {
-        // Fallback to manual token exchange (shouldn't happen with current setup)
-        const { code } = response.params;
-        console.log('Authorization code received, exchanging for token...');
-        console.log('Code length:', code?.length);
-        console.log('Code starts with:', code?.substring(0, 10) + '...');
-        exchangeCodeForToken(code);
-      }
-    } else if (response?.type === 'error') {
-      console.error('Google OAuth error:', response.error);
-      setLoading(false);
-    } else if (response?.type === 'cancel') {
-      console.log('User cancelled OAuth flow');
-      setLoading(false);
-    }
-  }, [response]);
-
-  const exchangeCodeForToken = async (code: string) => {
-    try {
-      console.log('Exchanging code for token...');
-      const clientIdToUse = Platform.OS === 'android' ? GOOGLE_ANDROID_CLIENT_ID : GOOGLE_WEB_CLIENT_ID;
-      const redirectUriToUse = Platform.OS === 'android' ? 'com.freefworlds.contactly://' : REDIRECT_URI;
-      
-      console.log('Using client ID:', clientIdToUse);
-      console.log('Using redirect URI:', redirectUriToUse);
-      console.log('Using PKCE:', true);
-      console.log('Code verifier exists:', !!request?.codeVerifier);
-      
-      if (!request?.codeVerifier) {
-        console.error('No code verifier found - this is required for PKCE');
-        setLoading(false);
-        return;
-      }
-      
-      const tokenRequestBody = new URLSearchParams({
-        code,
-        client_id: clientIdToUse,
-        redirect_uri: redirectUriToUse,
-        grant_type: 'authorization_code',
-        code_verifier: request.codeVerifier,
-      }).toString();
-      
-      console.log('Token request body:', tokenRequestBody);
-      
-      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: tokenRequestBody,
-      });
-
-      const data = await tokenResponse.json();
-      console.log('Token response status:', tokenResponse.status);
-      console.log('Token response:', data);
-      
-      if (data.access_token) {
-        console.log('Successfully obtained access token');
-        setAccessToken(data.access_token);
-        await AsyncStorage.setItem('googleAccessToken', data.access_token);
-        await getUserInfo(data.access_token);
-      } else {
-        console.error('Token response error:', data);
-        // Try to get more details about the error
-        if (data.error === 'invalid_grant') {
-          console.error('Invalid grant error - this usually means the authorization code has expired or was already used');
-          console.error('Please check your Google Cloud Console redirect URI configuration');
-          console.error('Make sure the redirect URI in Google Cloud Console matches exactly:', redirectUriToUse);
-        } else if (data.error === 'redirect_uri_mismatch') {
-          console.error('Redirect URI mismatch - the redirect URI in Google Cloud Console does not match the one being sent');
-          console.error('Expected redirect URI:', redirectUriToUse);
+        // Call the success callback if provided
+        if (onSignInSuccess) {
+          console.log('Calling sign-in success callback...');
+          onSignInSuccess();
+        } else {
+          console.log('No sign-in success callback set');
         }
       }
-    } catch (error) {
-      console.error('Error exchanging code for token:', error);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [accessToken, onSignInSuccess, hasProcessedResponse]);
 
   const checkExistingToken = async () => {
     try {
@@ -154,14 +86,11 @@ export function useGoogleAuth() {
   const testOAuthConfig = () => {
     console.log('=== OAuth Configuration Test ===');
     console.log('Platform:', Platform.OS);
-    console.log('Redirect URI:', Platform.OS === 'android' ? 'com.freefworlds.contactly://' : REDIRECT_URI);
+    console.log('Redirect URI:', REDIRECT_URI);
     console.log('Web Client ID:', GOOGLE_WEB_CLIENT_ID);
     console.log('Android Client ID:', GOOGLE_ANDROID_CLIENT_ID);
     console.log('iOS Client ID:', GOOGLE_IOS_CLIENT_ID);
     console.log('Using Client ID:', Platform.OS === 'android' ? GOOGLE_ANDROID_CLIENT_ID : GOOGLE_WEB_CLIENT_ID);
-    console.log('Request object exists:', !!request);
-    console.log('Auth URL:', request?.url);
-    console.log('Full Auth URL with params:', request?.url);
     console.log('===============================');
   };
 
@@ -171,20 +100,53 @@ export function useGoogleAuth() {
       console.log('Starting Google sign in...');
       testOAuthConfig();
       
-      if (!request) {
-        throw new Error('Auth request not initialized');
+      // Check if user is already signed in
+      const isSignedIn = await GoogleSignin.hasPreviousSignIn();
+      if (isSignedIn) {
+        console.log('User is already signed in');
+        const user = await GoogleSignin.getCurrentUser();
+        if (user) {
+          const tokens = await GoogleSignin.getTokens();
+          setAccessToken(tokens.accessToken);
+          await AsyncStorage.setItem('googleAccessToken', tokens.accessToken);
+          await getUserInfo(tokens.accessToken);
+          if (onSignInSuccess) {
+            console.log('Calling sign-in success callback...');
+            onSignInSuccess();
+          }
+        }
+        return;
+      }
+
+      // Sign in
+      const userInfo = await GoogleSignin.signIn();
+      console.log('Sign in successful:', userInfo);
+      
+      // Get tokens
+      const tokens = await GoogleSignin.getTokens();
+      console.log('Got tokens:', tokens);
+      
+      setAccessToken(tokens.accessToken);
+      await AsyncStorage.setItem('googleAccessToken', tokens.accessToken);
+      await getUserInfo(tokens.accessToken);
+      
+      // Call success callback
+      if (onSignInSuccess) {
+        console.log('Calling sign-in success callback...');
+        onSignInSuccess();
       }
       
-      const result = await promptAsync();
-      console.log('Prompt result:', result);
-      
-      if (result.type === 'error') {
-        console.error('Auth error:', result);
-      } else if (result.type === 'success') {
-        console.log('Auth successful, response will be handled in useEffect');
-      }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sign in error:', error);
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        console.log('User cancelled the sign-in flow');
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        console.log('Sign-in is in progress');
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        console.log('Play services not available');
+      } else {
+        console.error('Other error:', error);
+      }
       throw error;
     } finally {
       setLoading(false);
@@ -194,6 +156,7 @@ export function useGoogleAuth() {
   const signOut = async () => {
     try {
       setLoading(true);
+      await GoogleSignin.signOut();
       await AsyncStorage.removeItem('googleAccessToken');
       setAccessToken(null);
       setUserInfo(null);
@@ -427,6 +390,10 @@ export function useGoogleAuth() {
     }
   };
 
+  const setSignInSuccessCallback = (callback: () => void) => {
+    setOnSignInSuccess(() => callback);
+  };
+
   return {
     signIn,
     signOut,
@@ -434,6 +401,7 @@ export function useGoogleAuth() {
     createGoogleContact,
     updateGoogleContact,
     deleteGoogleContact,
+    setSignInSuccessCallback,
     accessToken,
     userInfo,
     loading,

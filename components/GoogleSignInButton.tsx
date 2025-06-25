@@ -1,5 +1,5 @@
 import { AntDesign } from '@expo/vector-icons';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useGoogleAuth } from '../context/GoogleAuthContext';
 
@@ -8,14 +8,20 @@ interface Props {
 }
 
 export const GoogleSignInButton: React.FC<Props> = ({ onSignInComplete }) => {
-  const { signIn, loading } = useGoogleAuth();
+  const { signIn, loading, setSignInSuccessCallback } = useGoogleAuth();
+
+  useEffect(() => {
+    if (onSignInComplete) {
+      setSignInSuccessCallback(onSignInComplete);
+    }
+  }, [onSignInComplete, setSignInSuccessCallback]);
 
   const handleSignIn = async () => {
     try {
       console.log('GoogleSignInButton: Starting sign in process...');
       await signIn();
       console.log('GoogleSignInButton: Sign in completed successfully');
-      onSignInComplete?.();
+      // The success callback will be called automatically by the hook
     } catch (error) {
       console.error('GoogleSignInButton: Sign in error:', error);
       Alert.alert(
