@@ -76,6 +76,12 @@
           "color": "#ffffff",
           "sounds": ["./assets/sounds/notification.wav"]
         }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.66493933765-up9oj0479db6h4qri889qva59mlv03di"
+        }
       ]
     ],
     "experiments": {

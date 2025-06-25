@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.anonymous.contactmanagerapp'
+    namespace 'com.freefworlds.contactly'
     defaultConfig {
-        applicationId 'com.anonymous.contactmanagerapp'
+        applicationId 'com.freefworlds.contactly'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -174,4 +174,8 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+    
+    // Google Sign-In
+    implementation 'com.google.android.gms:play-services-auth:20.7.0'
 }
+

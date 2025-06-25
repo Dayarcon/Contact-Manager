@@ -1,6 +1,6 @@
 import { AntDesign } from '@expo/vector-icons';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useGoogleAuth } from '../context/GoogleAuthContext';
 
 interface Props {
@@ -12,10 +12,17 @@ export const GoogleSignInButton: React.FC<Props> = ({ onSignInComplete }) => {
 
   const handleSignIn = async () => {
     try {
+      console.log('GoogleSignInButton: Starting sign in process...');
       await signIn();
+      console.log('GoogleSignInButton: Sign in completed successfully');
       onSignInComplete?.();
     } catch (error) {
-      console.error('Sign in error:', error);
+      console.error('GoogleSignInButton: Sign in error:', error);
+      Alert.alert(
+        'Sign In Error',
+        'Failed to sign in with Google. Please try again.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
