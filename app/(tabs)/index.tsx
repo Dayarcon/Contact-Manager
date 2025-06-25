@@ -1,12 +1,13 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, FlatList, ScrollView, View } from 'react-native';
-import { Button, Card, Chip, FAB, IconButton, Menu, Snackbar, Text, TextInput, useTheme } from 'react-native-paper';
+import { ActivityIndicator, Dimensions, FlatList, ScrollView, TouchableOpacity, View } from 'react-native';
+import { Avatar, Button, Card, Chip, FAB, IconButton, Menu, Snackbar, Text, TextInput, useTheme } from 'react-native-paper';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import styled from 'styled-components/native';
 import ContactListItem, { ContactListItemRef } from '../../components/ContactListItem';
 import { useContacts } from '../../context/ContactsContext';
+import { useGoogleAuth } from '../../context/GoogleAuthContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -35,8 +36,8 @@ const SearchContainer = styled.View`
   align-items: center;
   background-color: white;
   margin: 0 20px 20px 20px;
-  padding: 16px 20px;
-  border-radius: 16px;
+  padding: -1px 10px;
+  border-radius: 50px;
   elevation: 8;
   shadow-color: #000;
   shadow-opacity: 0.12;
@@ -58,6 +59,21 @@ const SearchIconContainer = styled.View`
   shadow-radius: 6px;
 `;
 
+const GoogleButton = styled(TouchableOpacity)`
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  background-color: white;
+  align-items: center;
+  justify-content: center;
+  margin-left: 12px;
+  elevation: 2;
+  shadow-color: #000;
+  shadow-opacity: 0.1;
+  shadow-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+`;
+
 const StyledSearchBar = styled(TextInput)`
   flex: 1;
   background-color: transparent;
@@ -65,6 +81,9 @@ const StyledSearchBar = styled(TextInput)`
   font-size: 16px;
   font-weight: 500;
   letter-spacing: 0.3px;
+  text-decoration: none;
+  border-bottom-width: 0;
+  padding-bottom: 0;
 `;
 
 const SearchActions = styled.View`
@@ -258,6 +277,9 @@ export default function HomeScreen() {
     getContactsByGroup: () => [],
     getContactStats: () => ({ total: 0, favorites: 0, vip: 0, groups: {}, recent: 0 })
   };
+
+  const { isSignedIn, userInfo, signIn, signOut } = useGoogleAuth();
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
 
   const [search, setSearch] = useState('');
   const [searchMode, setSearchMode] = useState(false);
@@ -610,6 +632,21 @@ export default function HomeScreen() {
     </Animated.View>
   );
 
+  const handleGoogleAuth = async () => {
+    try {
+      setIsAuthLoading(true);
+      if (isSignedIn) {
+        await signOut();
+      } else {
+        await signIn();
+      }
+    } catch (error) {
+      console.error('Google auth error:', error);
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <Container>
@@ -712,6 +749,8 @@ export default function HomeScreen() {
             onChangeText={setSearch}
             mode="flat"
             style={{ flex: 1 }}
+            underlineColor="transparent"
+            activeUnderlineColor="transparent"
             right={
               search ? (
                 <TextInput.Icon
@@ -721,6 +760,27 @@ export default function HomeScreen() {
               ) : undefined
             }
           />
+
+          <GoogleButton 
+            onPress={handleGoogleAuth}
+            disabled={isAuthLoading}
+          >
+            {isAuthLoading ? (
+              <ActivityIndicator size={24} color="#DB4437" />
+            ) : isSignedIn && userInfo?.picture ? (
+              <Avatar.Image 
+                size={40} 
+                source={{ uri: userInfo.picture }}
+              />
+            ) : (
+              <Avatar.Icon 
+                size={40}
+                icon="google"
+                color="#DB4437"
+                style={{ backgroundColor: 'transparent' }}
+              />
+            )}
+          </GoogleButton>
         </SearchContainer>
 
         {showAdvancedSearch && <SearchFilters />}
