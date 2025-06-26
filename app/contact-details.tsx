@@ -13,8 +13,7 @@ import ContactTimeline from '../components/ContactTimeline';
 import QuickActions from '../components/QuickActions';
 import { useContacts } from '../context/ContactsContext';
 import {
-    borderRadius,
-    menuPosition
+  borderRadius
 } from '../utils/responsive';
 
 const Container = styled.View`
@@ -867,6 +866,9 @@ export default function ContactDetailsScreen() {
                   shadowColor: '#000',
                   shadowOpacity: 0.2,
                   shadowRadius: 8
+                }}
+                onError={(error) => {
+                  console.log('Contact details image error for:', contact.name, 'URI:', contact.imageUri, 'Error:', error);
                 }}
               />
             ) : (

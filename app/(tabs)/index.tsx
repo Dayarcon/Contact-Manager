@@ -238,34 +238,54 @@ export default function HomeScreen() {
     addHistoryEvent: () => console.warn('Context not available'),
     mergeContacts: () => console.warn('Context not available'),
     findDuplicates: () => [],
+    getContactStats: () => ({ total: 0, favorites: 0, vip: 0, groups: {}, recent: 0 }),
     searchContacts: () => [],
     getContactsByGroup: () => [],
     getFavoriteContacts: () => [],
     getVIPContacts: () => [],
     getRecentContacts: () => [],
-    getContactStats: () => ({ total: 0, favorites: 0, vip: 0, groups: {}, recent: 0 })
+    syncGoogleContacts: () => Promise.resolve(),
+    runBatchAutomation: () => Promise.resolve(),
+    getAutomationServices: () => ({
+      remindersService: {} as any,
+      taggingService: {} as any,
+      messagingService: {} as any,
+      geoService: {} as any
+    })
   };
 
   // Swipe state management
   const swipeRefs = useRef<{ [key: string]: ContactListItemRef | null }>({});
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   
-  const { contacts, isLoading, deleteContact, toggleFavorite, toggleVIP, searchContacts, getFavoriteContacts, getVIPContacts, getRecentContacts, getContactsByGroup, getContactStats } = safeContext;
+  const { contacts, isLoading, deleteContact, toggleFavorite, toggleVIP, searchContacts, getFavoriteContacts, getVIPContacts, getRecentContacts, getContactsByGroup, getContactStats, syncGoogleContacts, isSyncing } = safeContext;
 
   const { isSignedIn, userInfo, signIn, signOut, setSignInSuccessCallback } = useGoogleAuth();
   const [isAuthLoading, setIsAuthLoading] = useState(false);
 
+  // Use ref to access the latest syncGoogleContacts function without causing re-renders
+  const syncGoogleContactsRef = useRef(syncGoogleContacts);
+  syncGoogleContactsRef.current = syncGoogleContacts;
+
   // Set up success callback for Google authentication
-  const handleSignInSuccess = useCallback(() => {
+  const handleSignInSuccess = useCallback(async () => {
     console.log('Google sign-in successful, staying on home screen');
+    
+    try {
+      // Automatically sync Google contacts after successful sign-in (force sync on sign-in)
+      await syncGoogleContactsRef.current(true);
+      setSnackbar({ visible: true, message: 'Successfully signed in with Google and synced contacts! 🎉' });
+    } catch (error) {
+      console.error('Error syncing contacts after sign-in:', error);
+      setSnackbar({ visible: true, message: 'Signed in with Google, but failed to sync contacts. You can try syncing manually in Settings.' });
+    }
+    
     // Ensure we're on the home screen
     if (router.canGoBack()) {
       // If we can go back, we might be on a different screen, so navigate to home
       router.replace('/(tabs)');
     }
-    // Show success message
-    setSnackbar({ visible: true, message: 'Successfully signed in with Google! 🎉' });
-  }, [router]);
+  }, [router]); // Remove syncGoogleContacts from dependencies
 
   // Set up success callback only once
   useEffect(() => {
@@ -413,11 +433,32 @@ export default function HomeScreen() {
     filteredContacts = performAdvancedSearch(search, searchFilters);
   }
 
+  // Sort contacts alphabetically by name
+  const sortContactsAlphabetically = (contacts: any[]) => {
+    return contacts.sort((a, b) => {
+      const nameA = (a.name || '').toLowerCase();
+      const nameB = (b.name || '').toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+  };
+
+  // Apply alphabetical sorting
+  filteredContacts = sortContactsAlphabetically(filteredContacts);
+
   const handleToggleFavorite = (id: string, isNowFavorite: boolean) => {
     toggleFavorite?.(id);
   };
 
   const clearAllFilters = () => {
+    // Reset all filter states
+    setShowFavorites(false);
+    setShowVIP(false);
+    setSelectedGroup(null);
+    setSelectedLabel(null);
+    setShowEmergency(false);
+    setShowRecent(false);
+    
+    // Reset search filters
     setSearchFilters({
       name: true,
       company: true,

@@ -180,14 +180,30 @@ export default function EditContactScreen() {
   const [imageUri, setImageUri] = useState(contact?.imageUri || '');
 
   // Phone numbers state
-  const [phoneNumbers, setPhoneNumbers] = useState(contact?.phoneNumbers || [
-    { id: '1', number: '', type: 'Mobile', isPrimary: true }
-  ]);
+  const [phoneNumbers, setPhoneNumbers] = useState(() => {
+    const existingPhones = contact?.phoneNumbers || [];
+    if (existingPhones.length > 0) {
+      // Ensure each phone number has a unique ID
+      return existingPhones.map((phone, index) => ({
+        ...phone,
+        id: phone.id || `phone-${Date.now()}-${index}`
+      }));
+    }
+    return [{ id: `phone-${Date.now()}-0`, number: '', type: 'Mobile', isPrimary: true }];
+  });
 
   // Email addresses state
-  const [emailAddresses, setEmailAddresses] = useState(contact?.emailAddresses || [
-    { id: '1', email: '', type: 'Personal', isPrimary: true }
-  ]);
+  const [emailAddresses, setEmailAddresses] = useState(() => {
+    const existingEmails = contact?.emailAddresses || [];
+    if (existingEmails.length > 0) {
+      // Ensure each email address has a unique ID
+      return existingEmails.map((email, index) => ({
+        ...email,
+        id: email.id || `email-${Date.now()}-${index}`
+      }));
+    }
+    return [{ id: `email-${Date.now()}-0`, email: '', type: 'Personal', isPrimary: true }];
+  });
 
   const commonGroups = ["Family", "Work", "Client", "Friends", "Emergency"];
 
@@ -216,7 +232,7 @@ export default function EditContactScreen() {
   // Phone number management
   const addPhoneNumber = () => {
     setPhoneNumbers([...phoneNumbers, { 
-      id: Date.now().toString(), 
+      id: `phone-${Date.now()}-${phoneNumbers.length}`, 
       number: '', 
       type: 'Mobile', 
       isPrimary: false 
@@ -238,7 +254,7 @@ export default function EditContactScreen() {
   // Email management
   const addEmailAddress = () => {
     setEmailAddresses([...emailAddresses, { 
-      id: Date.now().toString(), 
+      id: `email-${Date.now()}-${emailAddresses.length}`, 
       email: '', 
       type: 'Personal', 
       isPrimary: false 
@@ -418,7 +434,7 @@ export default function EditContactScreen() {
           <Card.Content>
             <SectionHeader>Phone Numbers</SectionHeader>
             {phoneNumbers.map((phone, index) => (
-              <Card key={phone.id} style={{ marginBottom: 12, backgroundColor: '#f8f9fa' }}>
+              <Card key={`phone-${phone.id || index}-${index}`} style={{ marginBottom: 12, backgroundColor: '#f8f9fa' }}>
                 <Card.Content>
                   <TextInput
                     label="Phone Number"
@@ -465,7 +481,7 @@ export default function EditContactScreen() {
           <Card.Content>
             <SectionHeader>Email Addresses</SectionHeader>
             {emailAddresses.map((email, index) => (
-              <Card key={email.id} style={{ marginBottom: 12, backgroundColor: '#f8f9fa' }}>
+              <Card key={`email-${email.id || index}-${index}`} style={{ marginBottom: 12, backgroundColor: '#f8f9fa' }}>
                 <Card.Content>
                   <TextInput
                     label="Email Address"

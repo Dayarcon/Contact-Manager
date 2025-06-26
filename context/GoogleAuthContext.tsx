@@ -6,6 +6,7 @@ interface GoogleAuthContextType {
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
   syncContacts: () => Promise<void>;
+  getContacts: () => Promise<any[]>;
   loading: boolean;
   userInfo: any;
   createGoogleContact: (contact: any) => Promise<any>;
@@ -29,6 +30,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     signIn,
     signOut,
     getContacts: syncContacts,
+    getContacts,
     createGoogleContact,
     updateGoogleContact,
     deleteGoogleContact,
@@ -45,6 +47,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         signIn,
         signOut,
         syncContacts,
+        getContacts,
         createGoogleContact,
         updateGoogleContact,
         deleteGoogleContact,

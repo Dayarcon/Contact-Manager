@@ -40,7 +40,10 @@
         "VIBRATE",
         "RECEIVE_BOOT_COMPLETED",
         "SCHEDULE_EXACT_ALARM",
-        "CALL_PHONE"
+        "CALL_PHONE",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "CAMERA"
       ]
     },
     "web": {
@@ -50,6 +53,13 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you add contact pictures.",
+          "cameraPermission": "The app accesses your camera to let you take contact pictures."
+        }
+      ],
       [
         "expo-location",
         {

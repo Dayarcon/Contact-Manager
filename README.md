@@ -431,3 +431,50 @@ If you encounter authentication issues:
 The app has been migrated from `expo-auth-session` to `@react-native-google-signin/google-signin` to resolve module compatibility issues and provide more reliable authentication.
 
 ## 📦 Installation
+
+## 🔧 Recent Fixes
+
+### Google Contacts Integration (Latest)
+- **Fixed Contact Import**: Google sign-in now properly fetches and imports all contacts from Google Contacts
+- **Enhanced Contact Mapping**: Improved parsing of Google contact fields (names, phones, emails, organizations, addresses, birthdays, etc.)
+- **Automatic Sync**: Contacts are automatically synced after successful Google sign-in
+- **Manual Sync**: Added manual sync button in Settings for on-demand contact synchronization
+- **Better Error Handling**: Improved error messages and fallback behavior
+- **Contact Deduplication**: Prevents importing duplicate contacts from Google
+
+### Key Improvements
+- Contacts are now properly imported with all available fields from Google
+- Automatic sync happens immediately after Google sign-in
+- Manual sync option available in Settings > Google Integration
+- Better error handling and user feedback
+- Contact structure now matches the app's Contact interface
+
+## 📋 Usage
+
+### Google Contacts Sync
+1. Tap the Google icon in the search bar or go to Settings > Google Integration
+2. Sign in with your Google account
+3. Contacts will automatically sync from Google Contacts
+4. Use the "Sync Google Contacts" button in Settings for manual sync
+
+### Managing Contacts
+- **Add Contact**: Tap the + button on the home screen
+- **Edit Contact**: Tap on any contact to view details, then tap the edit button
+- **Search**: Use the search bar to find contacts by name, company, phone, or email
+- **Filter**: Use the filter chips to view favorites, VIP contacts, or contacts by group
+- **Quick Actions**: Swipe left on contacts for quick actions like call, message, or email
+
+## 🛠️ Technical Stack
+
+- **Framework**: React Native with Expo
+- **Navigation**: Expo Router
+- **UI Components**: React Native Paper
+- **Styling**: Styled Components
+- **State Management**: React Context API
+- **Storage**: AsyncStorage
+- **Google Integration**: @react-native-google-signin/google-signin
+- **Animations**: React Native Reanimated
+
+## 📄 License
+
+This project is licensed under the MIT License.

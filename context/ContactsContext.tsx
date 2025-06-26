@@ -68,12 +68,15 @@ export type Contact = {
 interface ContactsContextType {
   contacts: Contact[];
   isLoading: boolean;
+  isSyncing: boolean;
+  lastSyncTimestamp: number | null;
   addContact: (contact: Omit<Contact, 'id' | 'isFavorite' | 'isVIP' | 'history' | 'createdAt' | 'updatedAt'>) => void;
   editContact: (id: string, updated: Partial<Contact>) => void;
   deleteContact: (id: string) => void;
   toggleFavorite: (id: string) => void;
   toggleVIP: (id: string) => void;
   importContacts: (imported: Omit<Contact, 'id' | 'isFavorite' | 'isVIP' | 'createdAt' | 'updatedAt'>[]) => void;
+  syncGoogleContacts: (forceSync?: boolean) => Promise<void>;
   setContacts: React.Dispatch<React.SetStateAction<Contact[]>>;
   addHistoryEvent: (id: string, event: InteractionHistoryItem) => void;
   mergeContacts: (primaryId: string, secondaryId: string) => void;
@@ -100,7 +103,9 @@ const STORAGE_KEY = 'contacts';
 export function ContactsProvider({ children }: { children: ReactNode }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { isSignedIn, createGoogleContact, updateGoogleContact, deleteGoogleContact } = useGoogleAuth();
+  const [lastSyncTimestamp, setLastSyncTimestamp] = useState<number | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const { isSignedIn, createGoogleContact, updateGoogleContact, deleteGoogleContact, getContacts } = useGoogleAuth();
 
   // Initialize automation services
   const [remindersService] = useState(() => SmartRemindersService.getInstance());
@@ -113,12 +118,27 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
     const loadContacts = async () => {
       try {
         const data = await AsyncStorage.getItem(STORAGE_KEY);
+        const syncData = await AsyncStorage.getItem('lastSyncTimestamp');
+        
         if (data) {
           const parsedContacts = JSON.parse(data);
+          console.log('Loaded contacts from storage:', parsedContacts.length, 'contacts');
+          
+          // Check for contacts with images
+          const contactsWithImages = parsedContacts.filter((c: Contact) => c.imageUri);
+          console.log('Contacts with images:', contactsWithImages.length);
+          contactsWithImages.forEach((c: Contact) => {
+            console.log('Contact with image:', c.name, 'URI:', c.imageUri);
+          });
+          
           // Validate the parsed data to ensure it has the correct structure
           if (Array.isArray(parsedContacts)) {
             setContacts(parsedContacts);
           }
+        }
+        
+        if (syncData) {
+          setLastSyncTimestamp(parseInt(syncData));
         }
       } catch (error) {
         console.error('Error loading contacts:', error);
@@ -141,6 +161,17 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
       }
     }
   }, [contacts, isLoading]);
+
+  // Save sync timestamp to AsyncStorage on change
+  useEffect(() => {
+    if (lastSyncTimestamp !== null) {
+      try {
+        AsyncStorage.setItem('lastSyncTimestamp', lastSyncTimestamp.toString());
+      } catch (error) {
+        console.error('Error saving sync timestamp:', error);
+      }
+    }
+  }, [lastSyncTimestamp]);
 
   const addContact = async (contact: Omit<Contact, 'id' | 'isFavorite' | 'isVIP' | 'history' | 'createdAt' | 'updatedAt'>) => {
     const newContact: Contact = {
@@ -176,29 +207,36 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const editContact = async (id: string, updated: Partial<Contact>) => {
+  const editContact = async (id: string, updates: Partial<Contact>) => {
     try {
+      console.log('Editing contact:', id, 'Updates:', updates);
+      
       setContacts(prev => {
-        const updatedContacts = prev.map(contact => 
+        const updated = prev.map(contact => 
           contact.id === id 
-            ? { ...contact, ...updated, updatedAt: new Date().toISOString() }
+            ? { ...contact, ...updates, updatedAt: new Date().toISOString() }
             : contact
         );
         
-        // Get the updated contact
-        const updatedContact = updatedContacts.find(c => c.id === id);
+        // Log the updated contact to see if imageUri is preserved
+        const updatedContact = updated.find(c => c.id === id);
+        console.log('Updated contact:', updatedContact);
+        
+        // Trigger automation features for the updated contact
         if (updatedContact) {
           triggerAutomationFeatures(updatedContact);
-          
-          // If signed in to Google and contact has a Google resource name, update Google contact
-          if (isSignedIn && updatedContact.googleResourceName) {
-            updateGoogleContact(updatedContact.googleResourceName, updatedContact)
-              .catch((error: unknown) => console.error('Error updating Google contact:', error));
-          }
         }
         
-        return updatedContacts;
+        return updated;
       });
+
+      // If signed in to Google and contact has Google resource name, update in Google
+      if (isSignedIn) {
+        const contact = contacts.find(c => c.id === id);
+        if (contact?.googleResourceName) {
+          await updateGoogleContact(contact.googleResourceName, { ...contact, ...updates });
+        }
+      }
     } catch (error: unknown) {
       console.error('Error editing contact:', error);
     }
@@ -436,10 +474,19 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
     };
   };
 
+  // Helper function to sort contacts alphabetically by name
+  const sortContactsAlphabetically = (contacts: Contact[]) => {
+    return contacts.sort((a, b) => {
+      const nameA = (a.name || '').toLowerCase();
+      const nameB = (b.name || '').toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+  };
+
   // Search contacts
   const searchContacts = (query: string) => {
     const lowerQuery = query.toLowerCase();
-    return contacts.filter(contact =>
+    const filtered = contacts.filter(contact =>
       contact.name.toLowerCase().includes(lowerQuery) ||
       contact.firstName?.toLowerCase().includes(lowerQuery) ||
       contact.lastName?.toLowerCase().includes(lowerQuery) ||
@@ -449,28 +496,33 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
       (contact.emailAddresses || []).some(e => e.email.toLowerCase().includes(lowerQuery)) ||
       contact.notes?.toLowerCase().includes(lowerQuery)
     );
+    return sortContactsAlphabetically(filtered);
   };
 
   // Get contacts by group
   const getContactsByGroup = (group: string) => {
-    return contacts.filter(c => c.group === group);
+    const filtered = contacts.filter(c => c.group === group);
+    return sortContactsAlphabetically(filtered);
   };
 
   // Get favorite contacts
   const getFavoriteContacts = () => {
-    return contacts.filter(c => c.isFavorite);
+    const filtered = contacts.filter(c => c.isFavorite);
+    return sortContactsAlphabetically(filtered);
   };
 
   // Get VIP contacts
   const getVIPContacts = () => {
-    return contacts.filter(c => c.isVIP);
+    const filtered = contacts.filter(c => c.isVIP);
+    return sortContactsAlphabetically(filtered);
   };
 
   // Get recent contacts
   const getRecentContacts = (days: number = 30) => {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - days);
-    return contacts.filter(c => new Date(c.updatedAt) > cutoff);
+    const filtered = contacts.filter(c => new Date(c.updatedAt) > cutoff);
+    return sortContactsAlphabetically(filtered);
   };
 
   // Automation features integration
@@ -521,16 +573,77 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
     geoService
   });
 
+  // Sync Google Contacts
+  const syncGoogleContacts = async (forceSync: boolean = false) => {
+    try {
+      if (!isSignedIn) {
+        throw new Error('Not signed in to Google');
+      }
+
+      // Prevent multiple simultaneous syncs
+      if (isSyncing) {
+        console.log('Sync already in progress, skipping...');
+        return;
+      }
+
+      // Check if sync is needed (unless forced)
+      if (!forceSync && lastSyncTimestamp) {
+        const timeSinceLastSync = Date.now() - lastSyncTimestamp;
+        const syncCooldown = 5 * 60 * 1000; // 5 minutes cooldown
+        
+        if (timeSinceLastSync < syncCooldown) {
+          console.log('Sync skipped - too soon since last sync');
+          return;
+        }
+      }
+
+      setIsSyncing(true);
+      console.log('Starting Google contacts sync...');
+
+      const googleContacts = await getContacts();
+      
+      // Filter out contacts that already exist (by Google resource name)
+      const existingGoogleResourceNames = new Set(
+        contacts
+          .filter(c => c.googleResourceName)
+          .map(c => c.googleResourceName)
+      );
+
+      const newContacts = googleContacts.filter(
+        (contact: Contact) => !existingGoogleResourceNames.has(contact.googleResourceName)
+      );
+
+      if (newContacts.length > 0) {
+        setContacts(prev => [...newContacts, ...prev]);
+        console.log(`Imported ${newContacts.length} new contacts from Google`);
+      } else {
+        console.log('No new contacts to import from Google');
+      }
+
+      // Update sync timestamp
+      setLastSyncTimestamp(Date.now());
+      
+    } catch (error) {
+      console.error('Error syncing Google contacts:', error);
+      throw error;
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // Create the context value with all functions properly defined
   const contextValue: ContactsContextType = {
     contacts,
     isLoading,
+    isSyncing,
+    lastSyncTimestamp,
     addContact,
     editContact,
     deleteContact,
     toggleFavorite,
     toggleVIP,
     importContacts,
+    syncGoogleContacts,
     setContacts,
     addHistoryEvent,
     mergeContacts,
@@ -560,12 +673,15 @@ export function useContacts() {
     return {
       contacts: [],
       isLoading: true,
+      isSyncing: false,
+      lastSyncTimestamp: null,
       addContact: () => console.warn('ContactsProvider not available'),
       editContact: () => console.warn('ContactsProvider not available'),
       deleteContact: () => console.warn('ContactsProvider not available'),
       toggleFavorite: () => console.warn('ContactsProvider not available'),
       toggleVIP: () => console.warn('ContactsProvider not available'),
       importContacts: () => console.warn('ContactsProvider not available'),
+      syncGoogleContacts: () => Promise.resolve(),
       setContacts: () => console.warn('ContactsProvider not available'),
       addHistoryEvent: () => console.warn('ContactsProvider not available'),
       mergeContacts: () => console.warn('ContactsProvider not available'),

@@ -267,6 +267,9 @@ const ContactListItem = forwardRef<ContactListItemRef, ContactListItemProps>(({
                 size={avatarSizes.large} 
                 source={{ uri: contact.imageUri }}
                 style={styles.avatarImage}
+                onError={(error) => {
+                  console.log('Avatar image error for contact:', contact.name, 'URI:', contact.imageUri, 'Error:', error);
+                }}
               />
             ) : (
               <Avatar.Text 

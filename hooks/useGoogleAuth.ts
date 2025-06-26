@@ -183,7 +183,7 @@ export function useGoogleAuth() {
       }
 
       const response = await fetch(
-        'https://people.googleapis.com/v1/people/me/connections?personFields=names,phoneNumbers,emailAddresses',
+        'https://people.googleapis.com/v1/people/me/connections?personFields=names,phoneNumbers,emailAddresses,organizations,biographies,birthdays,addresses,urls,photos',
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -204,12 +204,75 @@ export function useGoogleAuth() {
   };
 
   const parseGoogleContacts = (data: any) => {
-    return data.connections?.map((contact: any) => ({
-      id: contact.resourceName,
-      name: contact.names?.[0]?.displayName || '',
-      phoneNumbers: contact.phoneNumbers?.map((phone: any) => phone.value) || [],
-      emails: contact.emailAddresses?.map((email: any) => email.value) || [],
-    })) || [];
+    console.log('Parsing Google contacts data:', data);
+    return data.connections?.map((contact: any, index: number) => {
+      const name = contact.names?.[0];
+      const organization = contact.organizations?.[0];
+      const birthday = contact.birthdays?.[0];
+      const address = contact.addresses?.[0];
+      const website = contact.urls?.find((url: any) => url.type === 'website')?.value;
+      const biography = contact.biographies?.[0]?.value;
+      const photo = contact.photos?.[0];
+
+      console.log('Contact photo data:', { name: name?.displayName, photo });
+
+      // Helper function to validate and fix image URI
+      const getValidImageUri = (photo: any) => {
+        if (!photo?.url) return undefined;
+        
+        // Google Photos URLs sometimes need the access token appended
+        let imageUri = photo.url;
+        
+        // If it's a Google Photos URL and we have an access token, append it
+        if (imageUri.includes('googleusercontent.com') && accessToken) {
+          imageUri = `${imageUri}?access_token=${accessToken}`;
+        }
+        
+        return imageUri;
+      };
+
+      // Ensure unique ID by combining resource name with index
+      const uniqueId = `${contact.resourceName}_${index}`;
+
+      return {
+        id: uniqueId,
+        name: name?.displayName || '',
+        firstName: name?.givenName || '',
+        lastName: name?.familyName || '',
+        company: organization?.name || '',
+        jobTitle: organization?.title || '',
+        phoneNumbers: contact.phoneNumbers?.map((phone: any) => ({
+          number: phone.value,
+          type: phone.type || 'mobile',
+          isPrimary: false
+        })) || [],
+        emailAddresses: contact.emailAddresses?.map((email: any) => ({
+          email: email.value,
+          type: email.type || 'personal',
+          isPrimary: false
+        })) || [],
+        businessType: 'personal',
+        address: address?.formattedValue || '',
+        socialMedia: '',
+        website: website || '',
+        birthday: birthday?.date ? 
+          `${birthday.date.year}-${String(birthday.date.month).padStart(2, '0')}-${String(birthday.date.day).padStart(2, '0')}` : 
+          undefined,
+        anniversary: undefined,
+        isFavorite: false,
+        isVIP: false,
+        group: 'Google Contacts',
+        notes: biography || '',
+        history: [],
+        imageUri: getValidImageUri(photo),
+        isEmergencyContact: false,
+        emergencyContact: undefined,
+        labels: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        googleResourceName: contact.resourceName
+      };
+    }) || [];
   };
 
   const createGoogleContact = async (contact: any) => {

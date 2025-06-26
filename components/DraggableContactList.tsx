@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Dimensions, View } from 'react-native';
 import { Avatar, Card, Chip, IconButton, Text, useTheme } from 'react-native-paper';
 import Animated, {
@@ -251,6 +251,9 @@ const DraggableContactItem = ({
                   shadowColor: '#000',
                   shadowOpacity: 0.2,
                   shadowRadius: 6
+                }}
+                onError={(error) => {
+                  console.log('Draggable avatar image error for contact:', contact.name, 'URI:', contact.imageUri, 'Error:', error);
                 }}
               />
             ) : (

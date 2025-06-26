@@ -3,7 +3,7 @@ import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { Button, Card, IconButton, Snackbar, Switch, Text } from 'react-native-paper';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -165,7 +165,7 @@ export default function SettingsScreen() {
   const [loading, setLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const { isSignedIn, signOut, syncContacts, loading: googleLoading } = useGoogleAuth();
+  const { isSignedIn, signOut, loading: googleLoading } = useGoogleAuth();
   const [appAvailability, setAppAvailability] = useState({
     whatsapp: false,
     telegram: false,
@@ -177,10 +177,13 @@ export default function SettingsScreen() {
   const quickActionsService = QuickActionsService.getInstance();
   const [quickActionSettings, setQuickActionSettings] = useState(quickActionsService.getSettings());
 
-  const { contacts, importContacts, isLoading } = useContacts() || {
+  const { contacts, importContacts, isLoading, syncGoogleContacts, isSyncing, lastSyncTimestamp } = useContacts() || {
     contacts: [],
     importContacts: () => console.warn('Context not available'),
-    isLoading: true
+    isLoading: true,
+    syncGoogleContacts: () => Promise.resolve(),
+    isSyncing: false,
+    lastSyncTimestamp: null
   };
 
   const geoLocationService = GeoLocationService.getInstance();
@@ -395,7 +398,7 @@ export default function SettingsScreen() {
   const handleGoogleSync = async () => {
     try {
       setSnackbar({ visible: true, message: 'Syncing contacts with Google...' });
-      await syncContacts();
+      await syncGoogleContacts(true); // Force sync for manual sync
       setSnackbar({ visible: true, message: 'Contacts synced successfully!' });
     } catch (error) {
       console.error('Error syncing contacts:', error);
@@ -613,6 +616,107 @@ export default function SettingsScreen() {
                 color: '#1a1a1a',
                 letterSpacing: 0.5
               }}>
+                🔗 Google Integration
+              </Text>
+              
+              <Text style={{ 
+                fontSize: 14, 
+                color: '#666666', 
+                marginBottom: 20,
+                lineHeight: 20
+              }}>
+                Sync your contacts with Google and manage your Google account connection.
+              </Text>
+
+              {isSignedIn ? (
+                <View style={{ gap: 12 }}>
+                  {/* Sync Status */}
+                  <View style={{ 
+                    backgroundColor: '#f8f9fa',
+                    borderRadius: 12,
+                    padding: 16,
+                    marginBottom: 8
+                  }}>
+                    <Text style={{ 
+                      fontSize: 14, 
+                      fontWeight: '600', 
+                      marginBottom: 8,
+                      color: '#1a1a1a'
+                    }}>
+                      Sync Status
+                    </Text>
+                    <Text style={{ 
+                      fontSize: 12, 
+                      color: '#666666',
+                      marginBottom: 4
+                    }}>
+                      {isSyncing ? 'Syncing...' : 'Ready to sync'}
+                    </Text>
+                    {lastSyncTimestamp && (
+                      <Text style={{ 
+                        fontSize: 12, 
+                        color: '#666666'
+                      }}>
+                        Last sync: {new Date(lastSyncTimestamp).toLocaleString()}
+                      </Text>
+                    )}
+                  </View>
+
+                  <ExportButton
+                    mode="contained"
+                    onPress={handleGoogleSync}
+                    icon="sync"
+                    loading={isSyncing}
+                    disabled={isSyncing}
+                    style={{ backgroundColor: '#4285F4' }}
+                  >
+                    {isSyncing ? 'Syncing...' : 'Sync Google Contacts'}
+                  </ExportButton>
+
+                  <ExportButton
+                    mode="outlined"
+                    onPress={handleGoogleSignOut}
+                    icon="logout"
+                    loading={googleLoading}
+                    disabled={googleLoading || isSyncing}
+                    style={{ borderColor: '#DB4437' }}
+                    labelStyle={{ color: '#DB4437' }}
+                  >
+                    Sign Out from Google
+                  </ExportButton>
+                </View>
+              ) : (
+                <View style={{ gap: 12 }}>
+                  <Text style={{ 
+                    fontSize: 14, 
+                    color: '#666666', 
+                    marginBottom: 12,
+                    lineHeight: 20
+                  }}>
+                    Sign in with Google to sync your contacts and enable cloud backup.
+                  </Text>
+                  
+                  <GoogleSignInButton 
+                    onSignInComplete={() => {
+                      setSnackbar({ visible: true, message: 'Successfully signed in with Google!' });
+                    }}
+                  />
+                </View>
+              )}
+            </Card.Content>
+          </ExportSection>
+        </Animated.View>
+
+        <Animated.View entering={FadeInUp.delay(400).springify()}>
+          <ExportSection>
+            <Card.Content style={{ padding: 24 }}>
+              <Text style={{ 
+                fontSize: 20, 
+                fontWeight: '800', 
+                marginBottom: 20, 
+                color: '#1a1a1a',
+                letterSpacing: 0.5
+              }}>
                 🚀 Quick Actions
               </Text>
               
@@ -821,39 +925,6 @@ export default function SettingsScreen() {
               </ExportButton>
             </Card.Content>
           </ExportSection>
-        </Animated.View>
-
-        <Animated.View entering={FadeInUp.delay(400).springify()}>
-          <GoogleSection>
-            <SectionHeader>Google Contacts</SectionHeader>
-            <InfoText>
-              Connect your Google account to sync your contacts between devices and keep them backed up.
-            </InfoText>
-            {!isSignedIn ? (
-              <GoogleSignInButton
-                onSignInComplete={() => setSnackbar({ visible: true, message: 'Successfully signed in with Google!' })}
-              />
-            ) : (
-              <>
-                <GoogleSyncButton
-                  mode="contained"
-                  onPress={handleGoogleSync}
-                  loading={googleLoading}
-                  icon="sync"
-                >
-                  Sync Contacts
-                </GoogleSyncButton>
-                <GoogleSyncButton
-                  mode="outlined"
-                  onPress={handleGoogleSignOut}
-                  loading={googleLoading}
-                  icon="logout"
-                >
-                  Sign Out
-                </GoogleSyncButton>
-              </>
-            )}
-          </GoogleSection>
         </Animated.View>
       </ContentScroll>
 
