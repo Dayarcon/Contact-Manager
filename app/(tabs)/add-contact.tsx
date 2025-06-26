@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Alert, Dimensions, ScrollView, View } from 'react-native';
 import { Button, Card, Chip, IconButton, Snackbar, Switch, Text, TextInput, useTheme } from 'react-native-paper';
 import Animated, { FadeInUp, SlideInRight } from 'react-native-reanimated';
@@ -634,7 +634,7 @@ export default function AddContactScreen() {
                     No phone numbers added yet
                   </Text>
                   <Text style={{ fontSize: 12, color: '#999', textAlign: 'center', marginTop: 4 }}>
-                    Tap "Add Phone Number" to get started
+                    Tap &quot;Add Phone Number&quot; to get started
                   </Text>
                 </View>
               )}
@@ -718,7 +718,7 @@ export default function AddContactScreen() {
                     No email addresses added yet
                   </Text>
                   <Text style={{ fontSize: 12, color: '#999', textAlign: 'center', marginTop: 4 }}>
-                    Tap "Add Email Address" to get started
+                    Tap &quot;Add Email Address&quot; to get started
                   </Text>
                 </View>
               )}

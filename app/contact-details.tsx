@@ -198,6 +198,20 @@ export default function ContactDetailsScreen() {
   const { width: windowWidth } = useWindowDimensions();
   const searchParams = useLocalSearchParams();
   const context = useContacts();
+  
+  // State for editing notes
+  const [notesDialogVisible, setNotesDialogVisible] = useState(false);
+  const [notesDraft, setNotesDraft] = useState('');
+  
+  // Menu state
+  const [menuVisible, setMenuVisible] = useState(false);
+  
+  // State for image preview modal
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+  
+  // Timeline state
+  const [showTimeline, setShowTimeline] = useState(false);
+  
   // Fallback theme if needed
   const safeTheme = theme || {
     colors: {
@@ -238,16 +252,17 @@ export default function ContactDetailsScreen() {
   };
   const { id } = searchParams;
   const { contacts, isLoading, deleteContact, toggleFavorite, addHistoryEvent, editContact } = safeContext;
-
+  
   const contact = contacts?.find(c => c.id === id);
-
-  // State for editing notes
-  const [notesDialogVisible, setNotesDialogVisible] = useState(false);
-  const [notesDraft, setNotesDraft] = useState(contact?.notes || '');
-
-  // Menu state
-  const [menuVisible, setMenuVisible] = useState(false);
-
+  
+  // Initialize notesDraft when contact changes
+  useEffect(() => {
+    setNotesDraft(contact?.notes || '');
+  }, [contact?.notes]);
+  
+  // Menu position state
+  const [menuPosition, setMenuPosition] = useState({ anchorX: 0, anchorY: 0 });
+  
   // Favorite badge animation state
   const [favScale, setFavScale] = useState(1);
   useEffect(() => {
@@ -296,9 +311,6 @@ export default function ContactDetailsScreen() {
       editContact(contact.id, { imageUri: result.assets[0].uri });
     }
   };
-
-  // State for image preview modal
-  const [imageModalVisible, setImageModalVisible] = useState(false);
 
   // Remove image logic
   const handleRemoveImage = () => {
@@ -823,11 +835,6 @@ export default function ContactDetailsScreen() {
     );
   }
 
-  // Keep notesDraft in sync if contact changes
-  useEffect(() => {
-    setNotesDraft(contact.notes || '');
-  }, [contact.notes]);
-
   const primaryPhone = contact.phoneNumbers?.find(p => p.isPrimary) || contact.phoneNumbers?.[0];
   const primaryEmail = contact.emailAddresses?.find(e => e.isPrimary) || contact.emailAddresses?.[0];
 
@@ -909,8 +916,6 @@ export default function ContactDetailsScreen() {
       </Animated.View>
     );
   };
-
-  const [showTimeline, setShowTimeline] = useState(false);
 
   return (
     <Container style={{ backgroundColor: safeTheme.colors.background }}>

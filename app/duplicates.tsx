@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { Avatar, Button, Card, Chip, Divider, IconButton, Snackbar, Text } from 'react-native-paper';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -314,7 +314,7 @@ export default function DuplicatesScreen() {
       <EmptyTitle>No Duplicates Found!</EmptyTitle>
       <EmptySubtitle>
         Great job! Your contact list is clean and organized. 
-        We'll automatically detect duplicates as you add more contacts.
+        We&apos;ll automatically detect duplicates as you add more contacts.
       </EmptySubtitle>
     </EmptyState>
   );

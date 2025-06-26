@@ -6,13 +6,13 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { Avatar, Chip, IconButton, Text, TouchableRipple, useTheme } from 'react-native-paper';
 import Animated, { SlideInRight } from 'react-native-reanimated';
 import {
-    avatarSizes,
-    badgeDimensions,
-    borderRadius,
-    chipDimensions,
-    fontSizes,
-    iconSizes,
-    spacing
+  avatarSizes,
+  badgeDimensions,
+  borderRadius,
+  chipDimensions,
+  fontSizes,
+  iconSizes,
+  spacing
 } from '../utils/responsive';
 
 const { width } = Dimensions.get('window');
@@ -40,6 +40,17 @@ interface ContactListItemProps {
   onToggleVIP: (id: string) => void;
   onPress: (contact: any) => void;
   onSwipeOpen?: (contactId: string) => void;
+  isDragging?: boolean;
+  dragIndex?: number;
+  onReorder?: (from: number, to: number) => void;
+  showSwipeActions?: boolean;
+  showFavorites?: boolean;
+  showVIP?: boolean;
+  showGroups?: boolean;
+  showLastContact?: boolean;
+  showQuickActions?: boolean;
+  onQuickAction?: (contact: any) => void;
+  style?: any;
 }
 
 export interface ContactListItemRef {
@@ -54,7 +65,19 @@ const ContactListItem = forwardRef<ContactListItemRef, ContactListItemProps>(({
   onToggleFavorite, 
   onToggleVIP,
   onPress,
-  onSwipeOpen
+  onSwipeOpen,
+  isDragging = false,
+  dragIndex = -1,
+  onReorder,
+  showSwipeActions = true,
+  showFavorites = true,
+  showVIP = true,
+  showGroups = true,
+  showLastContact = true,
+  showQuickActions = true,
+  onQuickAction,
+  style,
+  ...props
 }, ref) => {
   const theme = useTheme();
   const initials = getInitials(contact.name);
@@ -336,6 +359,8 @@ const ContactListItem = forwardRef<ContactListItemRef, ContactListItemProps>(({
     </Swipeable>
   );
 });
+
+ContactListItem.displayName = 'ContactListItem';
 
 const styles = StyleSheet.create({
   swipeActionContainer: {
