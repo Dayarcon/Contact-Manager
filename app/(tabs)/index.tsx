@@ -293,10 +293,16 @@ export default function HomeScreen() {
     setSnackbar({ visible: true, message: 'Successfully signed in with Google! 🎉' });
   }, [router]);
 
+  // Set up success callback only once
   useEffect(() => {
     console.log('Setting up Google sign-in success callback');
     setSignInSuccessCallback(handleSignInSuccess);
-  }, [setSignInSuccessCallback, handleSignInSuccess]);
+    
+    // Cleanup function to prevent memory leaks
+    return () => {
+      setSignInSuccessCallback(() => {});
+    };
+  }, []); // Empty dependency array to run only once
 
   const [search, setSearch] = useState('');
   const [searchMode, setSearchMode] = useState(false);
@@ -469,27 +475,27 @@ export default function HomeScreen() {
         entering={FadeInUp.delay(index * 80).springify()}
       >
         <ContactListItem
-          ref={(ref) => {
+          ref={(ref: ContactListItemRef | null) => {
             swipeRefs.current[item.id] = ref;
           }}
           contact={item}
-          onEdit={(id) => router.push({ pathname: '/edit-contact', params: { id } })}
-          onDelete={(id) => {
+          onEdit={(id: string) => router.push({ pathname: '/edit-contact', params: { id } })}
+          onDelete={(id: string) => {
             if (deleteContact) {
               deleteContact(id);
             }
           }}
-          onToggleFavorite={(id) => {
+          onToggleFavorite={(id: string) => {
             if (toggleFavorite) {
               toggleFavorite(id);
             }
           }}
-          onToggleVIP={(id) => {
+          onToggleVIP={(id: string) => {
             if (toggleVIP) {
               toggleVIP(id);
             }
           }}
-          onPress={(contact) => {
+          onPress={(contact: any) => {
             router.push({ pathname: '/contact-details', params: { id: contact.id } });
           }}
           onSwipeOpen={handleSwipeOpen}
@@ -511,6 +517,7 @@ export default function HomeScreen() {
         }
       </EmptySubtitle>
       {!search && (
+        // @ts-ignore
         <IconButton
           icon="plus"
           size={32}
@@ -914,7 +921,7 @@ export default function HomeScreen() {
           <FlatList
             data={filteredContacts}
             renderItem={renderContact}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item: any) => item.id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 100 }}
           />

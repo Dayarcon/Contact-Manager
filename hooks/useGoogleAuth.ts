@@ -20,6 +20,7 @@ export function useGoogleAuth() {
   const [loading, setLoading] = useState(false);
   const [onSignInSuccess, setOnSignInSuccess] = useState<(() => void) | null>(null);
   const [hasProcessedResponse, setHasProcessedResponse] = useState(false);
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   // Configure Google Sign-In
   useEffect(() => {
@@ -49,15 +50,15 @@ export function useGoogleAuth() {
         getUserInfo(accessToken);
         setLoading(false);
         // Call the success callback if provided
-        if (onSignInSuccess) {
+        if (onSignInSuccess && !isSigningIn) {
           console.log('Calling sign-in success callback...');
           onSignInSuccess();
         } else {
-          console.log('No sign-in success callback set');
+          console.log('No sign-in success callback set or already signing in');
         }
       }
     }
-  }, [accessToken, onSignInSuccess, hasProcessedResponse]);
+  }, [accessToken, onSignInSuccess, hasProcessedResponse, isSigningIn]);
 
   const checkExistingToken = async () => {
     try {
@@ -96,6 +97,12 @@ export function useGoogleAuth() {
 
   const signIn = async () => {
     try {
+      if (isSigningIn) {
+        console.log('Sign-in already in progress, skipping...');
+        return;
+      }
+      
+      setIsSigningIn(true);
       setLoading(true);
       console.log('Starting Google sign in...');
       testOAuthConfig();
@@ -150,6 +157,7 @@ export function useGoogleAuth() {
       throw error;
     } finally {
       setLoading(false);
+      setIsSigningIn(false);
     }
   };
 
@@ -391,7 +399,16 @@ export function useGoogleAuth() {
   };
 
   const setSignInSuccessCallback = (callback: () => void) => {
-    setOnSignInSuccess(() => callback);
+    setOnSignInSuccess(() => {
+      // Debounce the callback to prevent multiple rapid calls
+      let timeoutId: ReturnType<typeof setTimeout>;
+      return () => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          callback();
+        }, 100);
+      };
+    });
   };
 
   return {

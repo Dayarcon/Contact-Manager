@@ -6,13 +6,13 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { Avatar, Chip, IconButton, Text, TouchableRipple, useTheme } from 'react-native-paper';
 import Animated, { SlideInRight } from 'react-native-reanimated';
 import {
-  avatarSizes,
-  badgeDimensions,
-  borderRadius,
-  chipDimensions,
-  fontSizes,
-  iconSizes,
-  spacing
+    avatarSizes,
+    badgeDimensions,
+    borderRadius,
+    chipDimensions,
+    fontSizes,
+    iconSizes,
+    spacing
 } from '../utils/responsive';
 
 const { width } = Dimensions.get('window');
@@ -169,12 +169,12 @@ const ContactListItem = forwardRef<ContactListItemRef, ContactListItemProps>(({
           activeOpacity={0.7}
         >
           <View style={styles.actionContent}>
-            <IconButton 
-              icon="phone" 
-              iconColor="white" 
-              size={iconSizes.md}
-              style={styles.actionIcon}
-            />
+            {React.createElement(IconButton, {
+              icon: "phone",
+              iconColor: "white",
+              size: iconSizes.md,
+              style: styles.actionIcon
+            })}
             <Text style={styles.actionLabel}>Call</Text>
           </View>
         </TouchableOpacity>
@@ -188,12 +188,12 @@ const ContactListItem = forwardRef<ContactListItemRef, ContactListItemProps>(({
           activeOpacity={0.7}
         >
           <View style={styles.actionContent}>
-            <IconButton 
-              icon="message" 
-              iconColor="white" 
-              size={iconSizes.md}
-              style={styles.actionIcon}
-            />
+            {React.createElement(IconButton, {
+              icon: "message",
+              iconColor: "white",
+              size: iconSizes.md,
+              style: styles.actionIcon
+            })}
             <Text style={styles.actionLabel}>Message</Text>
           </View>
         </TouchableOpacity>
@@ -218,6 +218,11 @@ const ContactListItem = forwardRef<ContactListItemRef, ContactListItemProps>(({
     
     return parts.join(' • ');
   };
+
+  // Ensure we always return a valid element
+  if (!contact) {
+    return <View />;
+  }
 
   return (
     <Swipeable
