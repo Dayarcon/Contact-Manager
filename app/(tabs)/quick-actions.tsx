@@ -2,7 +2,6 @@ import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React from 'react';
 import { Alert, View } from 'react-native';
 import { Appbar, Avatar, Button, Card, Text, useTheme } from 'react-native-paper';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -98,84 +97,56 @@ const GridButton = styled.View`
 
 export default function QuickActionsScreen() {
   const router = useRouter();
-  
-  // Try to access theme with error handling
-  let theme;
-  try {
-    theme = useTheme();
-  } catch (error) {
-    console.error('Error accessing theme:', error);
-    // Fallback theme object
-    theme = {
-      colors: {
-        primary: '#6200ee',
-        primaryContainer: '#e8def8',
-        secondary: '#03dac6',
-        secondaryContainer: '#ccdbfc',
-        tertiary: '#018786',
-        tertiaryContainer: '#b8e5d8',
-        error: '#b00020',
-        errorContainer: '#f9dedc',
-        background: '#ffffff',
-        surface: '#ffffff',
-        surfaceVariant: '#f5f5f5',
-        onSurface: '#000000',
-        onSurfaceVariant: '#666666',
-        outline: '#c1c1c1',
-        outlineVariant: '#e0e0e0'
-      }
-    };
-  }
-
-  // Try to access search params with error handling
-  let searchParams;
-  try {
-    searchParams = useLocalSearchParams();
-  } catch (error) {
-    console.error('Error accessing search params:', error);
-    searchParams = {};
-  }
-
-  const { id } = searchParams;
-
-  // Try to access context with error handling
-  let context;
-  try {
-    context = useContacts();
-  } catch (error) {
-    console.error('Error accessing contacts context:', error);
-    context = {
-      contacts: [],
-      isLoading: true,
-      addContact: () => console.warn('Context not available'),
-      editContact: () => console.warn('Context not available'),
-      deleteContact: () => console.warn('Context not available'),
-      toggleFavorite: () => console.warn('Context not available'),
-      importContacts: () => console.warn('Context not available'),
-      setContacts: () => console.warn('Context not available'),
-      addHistoryEvent: () => console.warn('Context not available'),
-      mergeContacts: () => console.warn('Context not available'),
-      findDuplicates: () => [],
-      getContactStats: () => ({ total: 0, favorites: 0, groups: {}, recent: 0 }),
-      searchContacts: () => [],
-      getContactsByGroup: () => [],
-      getFavoriteContacts: () => [],
-      getRecentContacts: () => []
-    };
-  }
-
-  const { contacts, isLoading } = context || {
-    contacts: [],
-    isLoading: true
+  const theme = useTheme();
+  const searchParams = useLocalSearchParams();
+  const context = useContacts();
+  // Fallback theme if needed
+  const safeTheme = theme || {
+    colors: {
+      primary: '#6200ee',
+      primaryContainer: '#e8def8',
+      secondary: '#03dac6',
+      secondaryContainer: '#ccdbfc',
+      tertiary: '#018786',
+      tertiaryContainer: '#b8e5d8',
+      error: '#b00020',
+      errorContainer: '#f9dedc',
+      background: '#ffffff',
+      surface: '#ffffff',
+      surfaceVariant: '#f5f5f5',
+      onSurface: '#000000',
+      onSurfaceVariant: '#666666',
+      outline: '#c1c1c1',
+      outlineVariant: '#e0e0e0'
+    }
   };
-
+  const safeContext = context || {
+    contacts: [],
+    isLoading: true,
+    addContact: () => console.warn('Context not available'),
+    editContact: () => console.warn('Context not available'),
+    deleteContact: () => console.warn('Context not available'),
+    toggleFavorite: () => console.warn('Context not available'),
+    importContacts: () => console.warn('Context not available'),
+    setContacts: () => console.warn('Context not available'),
+    addHistoryEvent: () => console.warn('Context not available'),
+    mergeContacts: () => console.warn('Context not available'),
+    findDuplicates: () => [],
+    getContactStats: () => ({ total: 0, favorites: 0, groups: {}, recent: 0 }),
+    searchContacts: () => [],
+    getContactsByGroup: () => [],
+    getFavoriteContacts: () => [],
+    getRecentContacts: () => []
+  };
+  const { id } = searchParams;
+  const { contacts, isLoading } = safeContext;
   const contact = contacts?.find(c => c.id === id);
 
   if (isLoading) {
     return (
-      <Container style={{ backgroundColor: theme.colors.background }}>
+      <Container style={{ backgroundColor: safeTheme.colors.background }}>
         <HeaderGradient
-          colors={[theme.colors.primary, theme.colors.primaryContainer]}
+          colors={[safeTheme.colors.primary, safeTheme.colors.primaryContainer]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         />
@@ -195,9 +166,9 @@ export default function QuickActionsScreen() {
 
   if (!id) {
     return (
-      <Container style={{ backgroundColor: theme.colors.background }}>
+      <Container style={{ backgroundColor: safeTheme.colors.background }}>
         <HeaderGradient
-          colors={[theme.colors.primary, theme.colors.primaryContainer]}
+          colors={[safeTheme.colors.primary, safeTheme.colors.primaryContainer]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         />
@@ -217,9 +188,9 @@ export default function QuickActionsScreen() {
 
   if (!contact) {
     return (
-      <Container style={{ backgroundColor: theme.colors.background }}>
+      <Container style={{ backgroundColor: safeTheme.colors.background }}>
         <HeaderGradient
-          colors={[theme.colors.primary, theme.colors.primaryContainer]}
+          colors={[safeTheme.colors.primary, safeTheme.colors.primaryContainer]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         />
@@ -380,9 +351,9 @@ export default function QuickActionsScreen() {
   };
 
   return (
-    <Container style={{ backgroundColor: theme.colors.background }}>
+    <Container style={{ backgroundColor: safeTheme.colors.background }}>
       <HeaderGradient
-        colors={[theme.colors.primary, theme.colors.primaryContainer]}
+        colors={[safeTheme.colors.primary, safeTheme.colors.primaryContainer]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
@@ -410,7 +381,7 @@ export default function QuickActionsScreen() {
                     label={getInitials(contact.name)}
                     size={80}
                     style={{ 
-                      backgroundColor: contact.isFavorite ? theme.colors.primary : theme.colors.secondary,
+                      backgroundColor: contact.isFavorite ? safeTheme.colors.primary : safeTheme.colors.secondary,
                       alignSelf: 'center'
                     }}
                   />
@@ -438,7 +409,7 @@ export default function QuickActionsScreen() {
                     icon="phone"
                     onPress={handleCall}
                     disabled={!primaryPhone}
-                    style={{ backgroundColor: theme.colors.primary }}
+                    style={{ backgroundColor: safeTheme.colors.primary }}
                     contentStyle={{ height: 48 }}
                   >
                     Call
@@ -450,7 +421,7 @@ export default function QuickActionsScreen() {
                     icon="message"
                     onPress={handleMessage}
                     disabled={!primaryPhone}
-                    style={{ backgroundColor: theme.colors.secondary }}
+                    style={{ backgroundColor: safeTheme.colors.secondary }}
                     contentStyle={{ height: 48 }}
                   >
                     Message
@@ -462,7 +433,7 @@ export default function QuickActionsScreen() {
                     icon="email"
                     onPress={handleEmail}
                     disabled={!primaryEmail}
-                    style={{ backgroundColor: theme.colors.tertiary }}
+                    style={{ backgroundColor: safeTheme.colors.tertiary }}
                     contentStyle={{ height: 48 }}
                   >
                     Email
@@ -474,7 +445,7 @@ export default function QuickActionsScreen() {
                     icon="video"
                     onPress={handleVideoCall}
                     disabled={!primaryPhone}
-                    style={{ backgroundColor: theme.colors.error }}
+                    style={{ backgroundColor: safeTheme.colors.error }}
                     contentStyle={{ height: 48 }}
                   >
                     Video Call
@@ -496,7 +467,7 @@ export default function QuickActionsScreen() {
                       mode="outlined"
                       icon="web"
                       onPress={handleWebsite}
-                      style={{ borderColor: theme.colors.outline }}
+                      style={{ borderColor: safeTheme.colors.outline }}
                       contentStyle={{ height: 48 }}
                     >
                       Website
@@ -509,7 +480,7 @@ export default function QuickActionsScreen() {
                       mode="outlined"
                       icon="map-marker"
                       onPress={handleMaps}
-                      style={{ borderColor: theme.colors.outline }}
+                      style={{ borderColor: safeTheme.colors.outline }}
                       contentStyle={{ height: 48 }}
                     >
                       Maps
@@ -521,7 +492,7 @@ export default function QuickActionsScreen() {
                     mode="outlined"
                     icon="share-variant"
                     onPress={handleShare}
-                    style={{ borderColor: theme.colors.outline }}
+                    style={{ borderColor: safeTheme.colors.outline }}
                     contentStyle={{ height: 48 }}
                   >
                     Share
@@ -533,7 +504,7 @@ export default function QuickActionsScreen() {
                       mode="outlined"
                       icon="calendar"
                       onPress={handleAddToCalendar}
-                      style={{ borderColor: theme.colors.outline }}
+                      style={{ borderColor: safeTheme.colors.outline }}
                       contentStyle={{ height: 48 }}
                     >
                       Calendar
@@ -555,7 +526,7 @@ export default function QuickActionsScreen() {
                     mode="outlined"
                     icon="pencil"
                     onPress={() => router.push({ pathname: '/(tabs)/edit-contact', params: { id: contact.id } })}
-                    style={{ borderColor: theme.colors.outline }}
+                    style={{ borderColor: safeTheme.colors.outline }}
                     contentStyle={{ height: 48 }}
                   >
                     Edit Contact
@@ -566,7 +537,7 @@ export default function QuickActionsScreen() {
                     mode="outlined"
                     icon="account-details"
                     onPress={() => router.push({ pathname: '/contact-details', params: { id: contact.id } })}
-                    style={{ borderColor: theme.colors.outline }}
+                    style={{ borderColor: safeTheme.colors.outline }}
                     contentStyle={{ height: 48 }}
                   >
                     View Details

@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Appbar, Button, Card, Chip, Text, useTheme } from 'react-native-paper';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import styled from 'styled-components/native';
@@ -125,42 +125,37 @@ const ActiveChip = styled(Chip)`
 
 export default function ManageContactsScreen() {
   const router = useRouter();
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
-  const [isEditMode, setIsEditMode] = useState(false);
-
-  // Try to access theme with error handling
-  let theme;
-  try {
-    theme = useTheme();
-  } catch (error) {
-    console.error('Error accessing theme:', error);
-    theme = {
-      colors: {
-        primary: '#6200ee',
-        primaryContainer: '#e8def8',
-        secondary: '#03dac6',
-        secondaryContainer: '#ccdbfc',
-        tertiary: '#018786',
-        tertiaryContainer: '#b8e5d8',
-        error: '#b00020',
-        errorContainer: '#f9dedc',
-        background: '#ffffff',
-        surface: '#ffffff',
-        surfaceVariant: '#f5f5f5',
-        onSurface: '#000000',
-        onSurfaceVariant: '#666666',
-        outline: '#c1c1c1',
-        outlineVariant: '#e0e0e0'
-      }
-    };
-  }
-
-  const { contacts, editContact, deleteContact, getContactsByGroup } = useContacts() || {
+  const theme = useTheme();
+  const context = useContacts();
+  // Fallback theme if needed
+  const safeTheme = theme || {
+    colors: {
+      primary: '#6200ee',
+      primaryContainer: '#e8def8',
+      secondary: '#03dac6',
+      secondaryContainer: '#ccdbfc',
+      tertiary: '#018786',
+      tertiaryContainer: '#b8e5d8',
+      error: '#b00020',
+      errorContainer: '#f9dedc',
+      background: '#ffffff',
+      surface: '#ffffff',
+      surfaceVariant: '#f5f5f5',
+      onSurface: '#000000',
+      onSurfaceVariant: '#666666',
+      outline: '#c1c1c1',
+      outlineVariant: '#e0e0e0'
+    }
+  };
+  const safeContext = context || {
     contacts: [],
     editContact: () => console.warn('Context not available'),
     deleteContact: () => console.warn('Context not available'),
     getContactsByGroup: () => []
   };
+  const { contacts, editContact, deleteContact, getContactsByGroup } = safeContext;
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Get unique groups from contacts
   const groups = Array.from(new Set(contacts.map(contact => contact.group).filter(Boolean)));
@@ -206,7 +201,7 @@ export default function ManageContactsScreen() {
     return (
       <Container>
         <HeaderGradient
-          colors={[theme.colors.primary, theme.colors.primaryContainer]}
+          colors={[safeTheme.colors.primary, safeTheme.colors.primaryContainer]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         />
@@ -225,7 +220,7 @@ export default function ManageContactsScreen() {
   return (
     <Container>
       <HeaderGradient
-        colors={[theme.colors.primary, theme.colors.primaryContainer]}
+        colors={[safeTheme.colors.primary, safeTheme.colors.primaryContainer]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />

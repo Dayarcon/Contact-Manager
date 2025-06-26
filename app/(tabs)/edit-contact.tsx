@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Appbar, Button, Card, Chip, Switch, Text, TextInput, useTheme } from 'react-native-paper';
 import styled from 'styled-components/native';
 import { useContacts } from '../../context/ContactsContext';
@@ -118,45 +118,48 @@ const getAvatarColor = (contact: any) => {
 export default function EditContactScreen() {
   const router = useRouter();
   const theme = useTheme();
-
-  // Try to access search params with error handling
-  let searchParams;
-  try {
-    searchParams = useLocalSearchParams<{ id: string }>();
-  } catch (error) {
-    console.error('Error accessing search params:', error);
-    searchParams = {};
-  }
-
+  const searchParams = useLocalSearchParams<{ id: string }>();
+  const context = useContacts();
+  // Fallback theme if needed
+  const safeTheme = theme || {
+    colors: {
+      primary: '#6200ee',
+      primaryContainer: '#e8def8',
+      secondary: '#03dac6',
+      secondaryContainer: '#ccdbfc',
+      tertiary: '#018786',
+      tertiaryContainer: '#b8e5d8',
+      error: '#b00020',
+      errorContainer: '#f9dedc',
+      background: '#ffffff',
+      surface: '#ffffff',
+      surfaceVariant: '#f5f5f5',
+      onSurface: '#000000',
+      onSurfaceVariant: '#666666',
+      outline: '#c1c1c1',
+      outlineVariant: '#e0e0e0'
+    }
+  };
+  const safeContext = context || {
+    contacts: [],
+    isLoading: true,
+    addContact: () => console.warn('Context not available'),
+    editContact: () => console.warn('Context not available'),
+    deleteContact: () => console.warn('Context not available'),
+    toggleFavorite: () => console.warn('Context not available'),
+    importContacts: () => console.warn('Context not available'),
+    setContacts: () => console.warn('Context not available'),
+    addHistoryEvent: () => console.warn('Context not available'),
+    mergeContacts: () => console.warn('Context not available'),
+    findDuplicates: () => [],
+    getContactStats: () => ({ total: 0, favorites: 0, groups: {}, recent: 0 }),
+    searchContacts: () => [],
+    getContactsByGroup: () => [],
+    getFavoriteContacts: () => [],
+    getRecentContacts: () => []
+  };
   const { id } = searchParams;
-
-  // Try to access context with error handling
-  let context;
-  try {
-    context = useContacts();
-  } catch (error) {
-    console.error('Error accessing contacts context:', error);
-    context = {
-      contacts: [],
-      isLoading: true,
-      addContact: () => console.warn('Context not available'),
-      editContact: () => console.warn('Context not available'),
-      deleteContact: () => console.warn('Context not available'),
-      toggleFavorite: () => console.warn('Context not available'),
-      importContacts: () => console.warn('Context not available'),
-      setContacts: () => console.warn('Context not available'),
-      addHistoryEvent: () => console.warn('Context not available'),
-      mergeContacts: () => console.warn('Context not available'),
-      findDuplicates: () => [],
-      getContactStats: () => ({ total: 0, favorites: 0, groups: {}, recent: 0 }),
-      searchContacts: () => [],
-      getContactsByGroup: () => [],
-      getFavoriteContacts: () => [],
-      getRecentContacts: () => []
-    };
-  }
-
-  const { contacts, isLoading, editContact } = context;
+  const { contacts, isLoading, editContact } = safeContext;
 
   const contact = contacts?.find(c => c.id === id);
   
@@ -293,7 +296,7 @@ export default function EditContactScreen() {
 
   if (isLoading) {
     return (
-      <Container style={{ backgroundColor: theme.colors.background }}>
+      <Container style={{ backgroundColor: safeTheme.colors.background }}>
         <Appbar.Header>
           <Appbar.BackAction onPress={() => router.back()} />
           <Appbar.Content title="Edit Contact" />
@@ -307,7 +310,7 @@ export default function EditContactScreen() {
 
   if (!id) {
     return (
-      <Container style={{ backgroundColor: theme.colors.background }}>
+      <Container style={{ backgroundColor: safeTheme.colors.background }}>
         <Appbar.Header>
           <Appbar.BackAction onPress={() => router.back()} />
           <Appbar.Content title="Edit Contact" />
@@ -321,7 +324,7 @@ export default function EditContactScreen() {
 
   if (!contact) {
     return (
-      <Container style={{ backgroundColor: theme.colors.background }}>
+      <Container style={{ backgroundColor: safeTheme.colors.background }}>
         <Appbar.Header>
           <Appbar.BackAction onPress={() => router.back()} />
           <Appbar.Content title="Edit Contact" />
@@ -334,7 +337,7 @@ export default function EditContactScreen() {
   }
 
   return (
-    <Container style={{ backgroundColor: theme.colors.background }}>
+    <Container style={{ backgroundColor: safeTheme.colors.background }}>
       <Appbar.Header>
         <Appbar.BackAction onPress={() => router.back()} />
         <Appbar.Content title="Edit Contact" />

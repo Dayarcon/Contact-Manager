@@ -203,80 +203,54 @@ const commonGroups = ["Family", "Work", "Client", "Friends", "Emergency"];
 export default function HomeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  
+  const theme = useTheme();
+  const context = useContacts();
+  // Fallback theme if needed
+  const safeTheme = theme || {
+    colors: {
+      primary: '#6200ee',
+      primaryContainer: '#e8def8',
+      secondary: '#03dac6',
+      secondaryContainer: '#ccdbfc',
+      tertiary: '#018786',
+      tertiaryContainer: '#b8e5d8',
+      error: '#b00020',
+      errorContainer: '#f9dedc',
+      background: '#ffffff',
+      surface: '#ffffff',
+      surfaceVariant: '#f5f5f5',
+      onSurface: '#000000',
+      onSurfaceVariant: '#666666',
+      outline: '#c1c1c1',
+      outlineVariant: '#e0e0e0'
+    }
+  };
+  const safeContext = context || {
+    contacts: [],
+    isLoading: true,
+    addContact: () => console.warn('Context not available'),
+    editContact: () => console.warn('Context not available'),
+    deleteContact: () => console.warn('Context not available'),
+    toggleFavorite: () => console.warn('Context not available'),
+    toggleVIP: () => console.warn('Context not available'),
+    importContacts: () => console.warn('Context not available'),
+    setContacts: () => console.warn('Context not available'),
+    addHistoryEvent: () => console.warn('Context not available'),
+    mergeContacts: () => console.warn('Context not available'),
+    findDuplicates: () => [],
+    searchContacts: () => [],
+    getContactsByGroup: () => [],
+    getFavoriteContacts: () => [],
+    getVIPContacts: () => [],
+    getRecentContacts: () => [],
+    getContactStats: () => ({ total: 0, favorites: 0, vip: 0, groups: {}, recent: 0 })
+  };
+
   // Swipe state management
   const swipeRefs = useRef<{ [key: string]: ContactListItemRef | null }>({});
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   
-  // Try to access theme with error handling
-  let theme;
-  try {
-    theme = useTheme();
-  } catch (error) {
-    console.error('Error accessing theme:', error);
-    // Fallback theme object
-    theme = {
-      colors: {
-        primary: '#6200ee',
-        primaryContainer: '#e8def8',
-        secondary: '#03dac6',
-        secondaryContainer: '#ccdbfc',
-        tertiary: '#018786',
-        tertiaryContainer: '#b8e5d8',
-        error: '#b00020',
-        errorContainer: '#f9dedc',
-        background: '#ffffff',
-        surface: '#ffffff',
-        surfaceVariant: '#f5f5f5',
-        onSurface: '#000000',
-        onSurfaceVariant: '#666666',
-        outline: '#c1c1c1',
-        outlineVariant: '#e0e0e0'
-      }
-    };
-  }
-
-  // Try to access context with error handling
-  let context;
-  try {
-    context = useContacts();
-  } catch (error) {
-    console.error('Error accessing contacts context:', error);
-    context = {
-      contacts: [],
-      isLoading: true,
-      addContact: () => console.warn('Context not available'),
-      editContact: () => console.warn('Context not available'),
-      deleteContact: () => console.warn('Context not available'),
-      toggleFavorite: () => console.warn('Context not available'),
-      toggleVIP: () => console.warn('Context not available'),
-      importContacts: () => console.warn('Context not available'),
-      setContacts: () => console.warn('Context not available'),
-      addHistoryEvent: () => console.warn('Context not available'),
-      mergeContacts: () => console.warn('Context not available'),
-      findDuplicates: () => [],
-      searchContacts: () => [],
-      getContactsByGroup: () => [],
-      getFavoriteContacts: () => [],
-      getVIPContacts: () => [],
-      getRecentContacts: () => [],
-      getContactStats: () => ({ total: 0, favorites: 0, vip: 0, groups: {}, recent: 0 })
-    };
-  }
-
-  const { contacts, isLoading, deleteContact, toggleFavorite, toggleVIP, searchContacts, getFavoriteContacts, getVIPContacts, getRecentContacts, getContactsByGroup, getContactStats } = context || {
-    contacts: [],
-    isLoading: true,
-    deleteContact: () => console.warn('Context not available'),
-    toggleFavorite: () => console.warn('Context not available'),
-    toggleVIP: () => console.warn('Context not available'),
-    searchContacts: () => [],
-    getFavoriteContacts: () => [],
-    getVIPContacts: () => [],
-    getRecentContacts: () => [],
-    getContactsByGroup: () => [],
-    getContactStats: () => ({ total: 0, favorites: 0, vip: 0, groups: {}, recent: 0 })
-  };
+  const { contacts, isLoading, deleteContact, toggleFavorite, toggleVIP, searchContacts, getFavoriteContacts, getVIPContacts, getRecentContacts, getContactsByGroup, getContactStats } = safeContext;
 
   const { isSignedIn, userInfo, signIn, signOut, setSignInSuccessCallback } = useGoogleAuth();
   const [isAuthLoading, setIsAuthLoading] = useState(false);
@@ -681,12 +655,12 @@ export default function HomeScreen() {
     return (
       <Container>
         <HeaderGradient
-          colors={[theme.colors.primary, theme.colors.primaryContainer]}
+          colors={[safeTheme.colors.primary, safeTheme.colors.primaryContainer]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <ActivityIndicator size="large" color={safeTheme.colors.primary} />
         </View>
       </Container>
     );
@@ -695,7 +669,7 @@ export default function HomeScreen() {
   return (
     <Container>
       <HeaderGradient
-        colors={[theme.colors.primary, theme.colors.primaryContainer]}
+        colors={[safeTheme.colors.primary, safeTheme.colors.primaryContainer]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
@@ -935,7 +909,7 @@ export default function HomeScreen() {
           margin: 16,
           right: 0,
           bottom: 0,
-          backgroundColor: theme.colors.primary,
+          backgroundColor: safeTheme.colors.primary,
         }}
         onPress={() => router.push('/add-contact')}
       />

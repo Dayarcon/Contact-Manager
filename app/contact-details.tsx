@@ -4,8 +4,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import React, { useEffect, useState } from 'react';
-import { Alert, Dimensions, Image, Linking, Modal, ScrollView, View, useWindowDimensions } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Image, Linking, Modal, ScrollView, View, useWindowDimensions } from 'react-native';
 import { Avatar, Button, Card, Chip, Dialog, FAB, IconButton, Menu, Portal, Text, TextInput, useTheme } from 'react-native-paper';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import styled from 'styled-components/native';
@@ -13,8 +13,8 @@ import ContactTimeline from '../components/ContactTimeline';
 import QuickActions from '../components/QuickActions';
 import { useContacts } from '../context/ContactsContext';
 import {
-  borderRadius,
-  menuPosition
+    borderRadius,
+    menuPosition
 } from '../utils/responsive';
 
 const Container = styled.View`
@@ -194,83 +194,50 @@ const getAvatarColor = (contact: any, theme: any) => {
 
 export default function ContactDetailsScreen() {
   const router = useRouter();
-  const { width } = Dimensions.get('window');
-  
-  // Try to access theme with error handling
-  let theme;
-  try {
-    theme = useTheme();
-  } catch (error) {
-    console.error('Error accessing theme:', error);
-    // Fallback theme object
-    theme = {
-      colors: {
-        primary: '#6200ee',
-        primaryContainer: '#e8def8',
-        secondary: '#03dac6',
-        secondaryContainer: '#ccdbfc',
-        tertiary: '#018786',
-        tertiaryContainer: '#b8e5d8',
-        error: '#b00020',
-        errorContainer: '#f9dedc',
-        background: '#ffffff',
-        surface: '#ffffff',
-        surfaceVariant: '#f5f5f5',
-        onSurface: '#000000',
-        onSurfaceVariant: '#666666',
-        outline: '#c1c1c1',
-        outlineVariant: '#e0e0e0'
-      }
-    };
-  }
-  
+  const theme = useTheme();
   const { width: windowWidth } = useWindowDimensions();
-
-  // Try to access search params with error handling
-  let searchParams;
-  try {
-    searchParams = useLocalSearchParams();
-  } catch (error) {
-    console.error('Error accessing search params:', error);
-    searchParams = {};
-  }
-
-  const { id } = searchParams;
-
-  // Try to access context with error handling
-  let context;
-  try {
-    context = useContacts();
-  } catch (error) {
-    console.error('Error accessing contacts context:', error);
-    context = {
-      contacts: [],
-      isLoading: true,
-      addContact: () => console.warn('Context not available'),
-      editContact: () => console.warn('Context not available'),
-      deleteContact: () => console.warn('Context not available'),
-      toggleFavorite: () => console.warn('Context not available'),
-      importContacts: () => console.warn('Context not available'),
-      setContacts: () => console.warn('Context not available'),
-      addHistoryEvent: () => console.warn('Context not available'),
-      mergeContacts: () => console.warn('Context not available'),
-      findDuplicates: () => [],
-      getContactStats: () => ({ total: 0, favorites: 0, groups: {}, recent: 0 }),
-      searchContacts: () => [],
-      getContactsByGroup: () => [],
-      getFavoriteContacts: () => [],
-      getRecentContacts: () => []
-    };
-  }
-
-  const { contacts, isLoading, deleteContact, toggleFavorite, addHistoryEvent, editContact } = context || {
+  const searchParams = useLocalSearchParams();
+  const context = useContacts();
+  // Fallback theme if needed
+  const safeTheme = theme || {
+    colors: {
+      primary: '#6200ee',
+      primaryContainer: '#e8def8',
+      secondary: '#03dac6',
+      secondaryContainer: '#ccdbfc',
+      tertiary: '#018786',
+      tertiaryContainer: '#b8e5d8',
+      error: '#b00020',
+      errorContainer: '#f9dedc',
+      background: '#ffffff',
+      surface: '#ffffff',
+      surfaceVariant: '#f5f5f5',
+      onSurface: '#000000',
+      onSurfaceVariant: '#666666',
+      outline: '#c1c1c1',
+      outlineVariant: '#e0e0e0'
+    }
+  };
+  const safeContext = context || {
     contacts: [],
     isLoading: true,
+    addContact: () => console.warn('Context not available'),
+    editContact: () => console.warn('Context not available'),
     deleteContact: () => console.warn('Context not available'),
     toggleFavorite: () => console.warn('Context not available'),
+    importContacts: () => console.warn('Context not available'),
+    setContacts: () => console.warn('Context not available'),
     addHistoryEvent: () => console.warn('Context not available'),
-    editContact: () => console.warn('Context not available')
+    mergeContacts: () => console.warn('Context not available'),
+    findDuplicates: () => [],
+    getContactStats: () => ({ total: 0, favorites: 0, groups: {}, recent: 0 }),
+    searchContacts: () => [],
+    getContactsByGroup: () => [],
+    getFavoriteContacts: () => [],
+    getRecentContacts: () => []
   };
+  const { id } = searchParams;
+  const { contacts, isLoading, deleteContact, toggleFavorite, addHistoryEvent, editContact } = safeContext;
 
   const contact = contacts?.find(c => c.id === id);
 
@@ -819,7 +786,7 @@ export default function ContactDetailsScreen() {
 
   if (isLoading) {
     return (
-      <Container style={{ backgroundColor: theme.colors.background }}>
+      <Container style={{ backgroundColor: safeTheme.colors.background }}>
         <View style={{ height: 48, flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
           <IconButton icon="arrow-left" onPress={() => router.back()} accessibilityLabel="Go back" />
         </View>
@@ -832,7 +799,7 @@ export default function ContactDetailsScreen() {
 
   if (!id) {
     return (
-      <Container style={{ backgroundColor: theme.colors.background }}>
+      <Container style={{ backgroundColor: safeTheme.colors.background }}>
         <View style={{ height: 48, flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
           <IconButton icon="arrow-left" onPress={() => router.back()} accessibilityLabel="Go back" />
         </View>
@@ -845,7 +812,7 @@ export default function ContactDetailsScreen() {
 
   if (!contact) {
     return (
-      <Container style={{ backgroundColor: theme.colors.background }}>
+      <Container style={{ backgroundColor: safeTheme.colors.background }}>
         <View style={{ height: 48, flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
           <IconButton icon="arrow-left" onPress={() => router.back()} accessibilityLabel="Go back" />
         </View>
@@ -876,7 +843,7 @@ export default function ContactDetailsScreen() {
 
   const renderContactHeader = () => {
     const initials = getInitials(contact.name);
-    const avatarColor = getAvatarColor(contact, theme);
+    const avatarColor = getAvatarColor(contact, safeTheme);
 
     return (
       <Animated.View entering={FadeInUp.delay(100)}>
@@ -946,7 +913,7 @@ export default function ContactDetailsScreen() {
   const [showTimeline, setShowTimeline] = useState(false);
 
   return (
-    <Container style={{ backgroundColor: theme.colors.background }}>
+    <Container style={{ backgroundColor: safeTheme.colors.background }}>
       {/* Navigation Header */}
       <View style={{ 
         height: 100, 
@@ -1065,7 +1032,7 @@ export default function ContactDetailsScreen() {
       </Menu>
 
       <GradientBackground
-        colors={[theme.colors.primaryContainer, theme.colors.background]}
+        colors={[safeTheme.colors.primaryContainer, safeTheme.colors.background]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
       />
@@ -1111,15 +1078,15 @@ export default function ContactDetailsScreen() {
                 
                 {contact.phoneNumbers && contact.phoneNumbers.length > 0 && (
                   <>
-                    <Text style={{ fontSize: 14, color: theme.colors.onSurfaceVariant, marginBottom: 8, marginLeft: 8 }}>
+                    <Text style={{ fontSize: 14, color: safeTheme.colors.onSurfaceVariant, marginBottom: 8, marginLeft: 8 }}>
                       Phone Numbers
                     </Text>
                     {contact.phoneNumbers.map((phone, index) => (
                       <Row key={phone.id || index}>
-                        <IconButton icon="phone" size={20} iconColor={theme.colors.primary} />
+                        <IconButton icon="phone" size={20} iconColor={safeTheme.colors.primary} />
                         <View style={{ flex: 1, marginLeft: 8 }}>
                           <Text style={{ fontSize: 16, fontWeight: '500' }}>{phone.number}</Text>
-                          <Text style={{ fontSize: 12, color: theme.colors.onSurfaceVariant }}>
+                          <Text style={{ fontSize: 12, color: safeTheme.colors.onSurfaceVariant }}>
                             {phone.type} {phone.isPrimary && '(Primary)'}
                           </Text>
                         </View>
@@ -1146,15 +1113,15 @@ export default function ContactDetailsScreen() {
 
                 {contact.emailAddresses && contact.emailAddresses.length > 0 && (
                   <>
-                    <Text style={{ fontSize: 14, color: theme.colors.onSurfaceVariant, marginBottom: 8, marginLeft: 8, marginTop: 16 }}>
+                    <Text style={{ fontSize: 14, color: safeTheme.colors.onSurfaceVariant, marginBottom: 8, marginLeft: 8, marginTop: 16 }}>
                       Email Addresses
                     </Text>
                     {contact.emailAddresses.map((email, index) => (
                       <Row key={email.id || index}>
-                        <IconButton icon="email" size={20} iconColor={theme.colors.secondary} />
+                        <IconButton icon="email" size={20} iconColor={safeTheme.colors.secondary} />
                         <View style={{ flex: 1, marginLeft: 8 }}>
                           <Text style={{ fontSize: 16, fontWeight: '500' }}>{email.email}</Text>
-                          <Text style={{ fontSize: 12, color: theme.colors.onSurfaceVariant }}>
+                          <Text style={{ fontSize: 12, color: safeTheme.colors.onSurfaceVariant }}>
                             {email.type} {email.isPrimary && '(Primary)'}
                           </Text>
                         </View>
@@ -1178,10 +1145,10 @@ export default function ContactDetailsScreen() {
 
                 {contact.website && (
                   <Row>
-                    <IconButton icon="web" size={20} iconColor={theme.colors.tertiary} />
+                    <IconButton icon="web" size={20} iconColor={safeTheme.colors.tertiary} />
                     <View style={{ flex: 1, marginLeft: 8 }}>
                       <Text style={{ fontSize: 16, fontWeight: '500' }}>{contact.website}</Text>
-                      <Text style={{ fontSize: 12, color: theme.colors.onSurfaceVariant }}>Website</Text>
+                      <Text style={{ fontSize: 12, color: safeTheme.colors.onSurfaceVariant }}>Website</Text>
                     </View>
                     <IconButton
                       icon="open-in-new"
@@ -1193,10 +1160,10 @@ export default function ContactDetailsScreen() {
 
                 {contact.address && (
                   <Row>
-                    <IconButton icon="map-marker" size={20} iconColor={theme.colors.error} />
+                    <IconButton icon="map-marker" size={20} iconColor={safeTheme.colors.error} />
                     <View style={{ flex: 1, marginLeft: 8 }}>
                       <Text style={{ fontSize: 16, fontWeight: '500' }}>{contact.address}</Text>
-                      <Text style={{ fontSize: 12, color: theme.colors.onSurfaceVariant }}>Address</Text>
+                      <Text style={{ fontSize: 12, color: safeTheme.colors.onSurfaceVariant }}>Address</Text>
                     </View>
                     <IconButton
                       icon="map"
@@ -1218,40 +1185,40 @@ export default function ContactDetailsScreen() {
                   
                   {contact.birthday && (
                     <Row>
-                      <IconButton icon="cake-variant" size={20} iconColor={theme.colors.primary} />
+                      <IconButton icon="cake-variant" size={20} iconColor={safeTheme.colors.primary} />
                       <View style={{ flex: 1, marginLeft: 8 }}>
                         <Text style={{ fontSize: 16, fontWeight: '500' }}>{contact.birthday}</Text>
-                        <Text style={{ fontSize: 12, color: theme.colors.onSurfaceVariant }}>Birthday</Text>
+                        <Text style={{ fontSize: 12, color: safeTheme.colors.onSurfaceVariant }}>Birthday</Text>
                       </View>
                     </Row>
                   )}
 
                   {contact.anniversary && (
                     <Row>
-                      <IconButton icon="heart" size={20} iconColor={theme.colors.secondary} />
+                      <IconButton icon="heart" size={20} iconColor={safeTheme.colors.secondary} />
                       <View style={{ flex: 1, marginLeft: 8 }}>
                         <Text style={{ fontSize: 16, fontWeight: '500' }}>{contact.anniversary}</Text>
-                        <Text style={{ fontSize: 12, color: theme.colors.onSurfaceVariant }}>Anniversary</Text>
+                        <Text style={{ fontSize: 12, color: safeTheme.colors.onSurfaceVariant }}>Anniversary</Text>
                       </View>
                     </Row>
                   )}
 
                   {contact.socialMedia && (
                     <Row>
-                      <IconButton icon="share-variant" size={20} iconColor={theme.colors.tertiary} />
+                      <IconButton icon="share-variant" size={20} iconColor={safeTheme.colors.tertiary} />
                       <View style={{ flex: 1, marginLeft: 8 }}>
                         <Text style={{ fontSize: 16, fontWeight: '500' }}>{contact.socialMedia}</Text>
-                        <Text style={{ fontSize: 12, color: theme.colors.onSurfaceVariant }}>Social Media</Text>
+                        <Text style={{ fontSize: 12, color: safeTheme.colors.onSurfaceVariant }}>Social Media</Text>
                       </View>
                     </Row>
                   )}
 
                   {contact.businessType && (
                     <Row>
-                      <IconButton icon="store" size={20} iconColor={theme.colors.error} />
+                      <IconButton icon="store" size={20} iconColor={safeTheme.colors.error} />
                       <View style={{ flex: 1, marginLeft: 8 }}>
                         <Text style={{ fontSize: 16, fontWeight: '500' }}>{contact.businessType}</Text>
-                        <Text style={{ fontSize: 12, color: theme.colors.onSurfaceVariant }}>Business Type</Text>
+                        <Text style={{ fontSize: 12, color: safeTheme.colors.onSurfaceVariant }}>Business Type</Text>
                       </View>
                     </Row>
                   )}
@@ -1265,7 +1232,7 @@ export default function ContactDetailsScreen() {
             <SectionCard>
               <Card.Content>
                 <SectionHeader>Notes</SectionHeader>
-                <View style={{ backgroundColor: theme.colors.surfaceVariant, borderRadius: 8, padding: 12 }}>
+                <View style={{ backgroundColor: safeTheme.colors.surfaceVariant, borderRadius: 8, padding: 12 }}>
                   <Text style={{ fontSize: 14, lineHeight: 20 }}>
                     {contact.notes || 'No notes added yet.'}
                   </Text>
@@ -1314,11 +1281,11 @@ export default function ContactDetailsScreen() {
                 
                 {!showTimeline && timelineEvents.length > 0 && (
                   <View style={{ 
-                    backgroundColor: theme.colors.surfaceVariant, 
+                    backgroundColor: safeTheme.colors.surfaceVariant, 
                     borderRadius: 8, 
                     padding: 12 
                   }}>
-                    <Text style={{ fontSize: 14, color: theme.colors.onSurfaceVariant }}>
+                    <Text style={{ fontSize: 14, color: safeTheme.colors.onSurfaceVariant }}>
                       {timelineEvents.length} interaction{timelineEvents.length !== 1 ? 's' : ''} recorded
                     </Text>
                   </View>
@@ -1334,7 +1301,7 @@ export default function ContactDetailsScreen() {
         <FAB
           icon="pencil"
           onPress={handleFabPress}
-          style={{ backgroundColor: theme.colors.primary }}
+          style={{ backgroundColor: safeTheme.colors.primary }}
         />
       </Animated.View>
 
@@ -1379,7 +1346,7 @@ export default function ContactDetailsScreen() {
           <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.9)', justifyContent: 'center', alignItems: 'center' }}>
             <Image
               source={{ uri: contact.imageUri }}
-              style={{ width: width * 0.8, height: width * 0.8, borderRadius: 16 }}
+              style={{ width: windowWidth * 0.8, height: windowWidth * 0.8, borderRadius: 16 }}
               resizeMode="cover"
             />
             <View style={{ flexDirection: 'row', marginTop: 24 }}>
