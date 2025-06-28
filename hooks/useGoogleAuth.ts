@@ -125,38 +125,24 @@ export function useGoogleAuth() {
   };
 
   const ensureAccessToken = async () => {
-    console.log('=== ensureAccessToken called ===');
-    console.log('Current accessToken in state:', accessToken ? 'Present' : 'Missing');
-    
     if (accessToken) {
-      console.log('Using existing access token from state');
       return accessToken;
     }
     
-    console.log('No access token in state, checking GoogleSignin...');
     const isSignedIn = await GoogleSignin.hasPreviousSignIn();
-    console.log('GoogleSignin.hasPreviousSignIn():', isSignedIn);
     
     if (isSignedIn) {
       try {
-        console.log('Getting tokens from GoogleSignin...');
         const tokens = await GoogleSignin.getTokens();
-        console.log('Tokens received:', tokens ? 'Success' : 'Failed');
         
         if (tokens?.accessToken) {
-          console.log('Setting access token in state...');
           setAccessToken(tokens.accessToken);
           await AsyncStorage.setItem('googleAccessToken', tokens.accessToken);
-          console.log('Retrieved access token from GoogleSignin');
           return tokens.accessToken;
-        } else {
-          console.log('No access token in tokens object');
         }
       } catch (error) {
         console.error('Failed to get tokens from GoogleSignin:', error);
       }
-    } else {
-      console.log('User is not signed in according to GoogleSignin');
     }
     
     throw new Error('Not signed in to Google');
@@ -265,11 +251,8 @@ export function useGoogleAuth() {
 
   const getContacts = async (onContactProcessed?: (contact: any) => void) => {
     try {
-      console.log('=== getContacts called ===');
-      
       // Ensure we have a valid access token
       const currentAccessToken = await ensureAccessToken();
-      console.log('Using access token:', currentAccessToken.substring(0, 20) + '...');
       
       let response = await fetch(
         'https://people.googleapis.com/v1/people/me/connections?personFields=names,phoneNumbers,emailAddresses,organizations,biographies,birthdays,addresses,urls,photos,memberships&pageSize=1000',
@@ -281,19 +264,14 @@ export function useGoogleAuth() {
         }
       );
 
-      console.log('Google API response status:', response.status);
-      console.log('Google API response headers:', Object.fromEntries(response.headers.entries()));
-
       // If token is expired, try to refresh it
       if (response.status === 401) {
-        console.log('Access token expired, attempting to refresh...');
         try {
           const tokens = await GoogleSignin.getTokens();
           const newAccessToken = tokens.accessToken;
           setAccessToken(newAccessToken);
           await AsyncStorage.setItem('googleAccessToken', newAccessToken);
           
-          console.log('Token refreshed, retrying request...');
           response = await fetch(
             'https://people.googleapis.com/v1/people/me/connections?personFields=names,phoneNumbers,emailAddresses,organizations,biographies,birthdays,addresses,urls,photos,memberships&pageSize=1000',
             {
@@ -303,7 +281,6 @@ export function useGoogleAuth() {
               },
             }
           );
-          console.log('Retry response status:', response.status);
         } catch (refreshError) {
           console.error('Failed to refresh token:', refreshError);
           throw new Error('Access token expired and could not be refreshed. Please sign in again.');
@@ -317,7 +294,6 @@ export function useGoogleAuth() {
       }
 
       const data = await response.json();
-      console.log('Google API response data keys:', Object.keys(data));
       console.log('Number of connections received:', data.connections?.length || 0);
       
       return await parseGoogleContacts(data, onContactProcessed);
@@ -325,7 +301,6 @@ export function useGoogleAuth() {
       console.error('Error fetching Google contacts:', error);
       if (error instanceof Error) {
         console.error('Error details:', error.message);
-        console.error('Error stack:', error.stack);
       }
       throw error;
     }

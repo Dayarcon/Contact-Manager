@@ -151,25 +151,33 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
     loadContacts();
   }, []);
 
-  // Save contacts to AsyncStorage on change
+  // Save contacts to AsyncStorage on change - debounced to reduce frequency
   useEffect(() => {
     if (!isLoading) {
-      try {
-        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(contacts));
-      } catch (error) {
-        console.error('Error saving contacts:', error);
-      }
+      const timeoutId = setTimeout(() => {
+        try {
+          AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(contacts));
+        } catch (error) {
+          console.error('Error saving contacts:', error);
+        }
+      }, 2000); // Increased debounce to 2 seconds for better performance
+      
+      return () => clearTimeout(timeoutId);
     }
   }, [contacts, isLoading]);
 
-  // Save sync timestamp to AsyncStorage on change
+  // Save sync timestamp to AsyncStorage on change - debounced
   useEffect(() => {
     if (lastSyncTimestamp !== null) {
-      try {
-        AsyncStorage.setItem('lastSyncTimestamp', lastSyncTimestamp.toString());
-      } catch (error) {
-        console.error('Error saving sync timestamp:', error);
-      }
+      const timeoutId = setTimeout(() => {
+        try {
+          AsyncStorage.setItem('lastSyncTimestamp', lastSyncTimestamp.toString());
+        } catch (error) {
+          console.error('Error saving sync timestamp:', error);
+        }
+      }, 1000); // Increased debounce to 1 second
+      
+      return () => clearTimeout(timeoutId);
     }
   }, [lastSyncTimestamp]);
 

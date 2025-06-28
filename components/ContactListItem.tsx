@@ -1,10 +1,9 @@
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
-import React, { forwardRef, useImperativeHandle } from 'react';
+import React, { forwardRef, useCallback, useImperativeHandle, useMemo } from 'react';
 import { Alert, Dimensions, StyleSheet, TouchableOpacity, Vibration, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Avatar, Chip, IconButton, Text, TouchableRipple, useTheme } from 'react-native-paper';
-import Animated, { SlideInRight } from 'react-native-reanimated';
 import {
   avatarSizes,
   badgeDimensions,
@@ -58,7 +57,7 @@ export interface ContactListItemRef {
   closeImmediate: () => void;
 }
 
-const ContactListItem = forwardRef<ContactListItemRef, ContactListItemProps>(({ 
+const ContactListItem = React.memo(forwardRef<ContactListItemRef, ContactListItemProps>(({ 
   contact, 
   onEdit, 
   onDelete, 
@@ -80,14 +79,20 @@ const ContactListItem = forwardRef<ContactListItemRef, ContactListItemProps>(({
   ...props
 }, ref) => {
   const theme = useTheme();
-  const initials = getInitials(contact.name);
-  const avatarColor = getAvatarColor(contact);
+  
+  // Memoize expensive calculations
+  const initials = useMemo(() => getInitials(contact.name), [contact.name]);
+  const avatarColor = useMemo(() => getAvatarColor(contact), [contact]);
+  
+  // Get primary phone number for quick actions - memoized
+  const primaryPhone = useMemo(() => 
+    contact.phoneNumbers?.find((p: any) => p.isPrimary)?.number || 
+    contact.phoneNumbers?.[0]?.number || '', 
+    [contact.phoneNumbers]
+  );
+  
   const swipeableRef = React.useRef<Swipeable>(null);
   
-  // Get primary phone number for quick actions
-  const primaryPhone = contact.phoneNumbers?.find((p: any) => p.isPrimary)?.number || 
-                      contact.phoneNumbers?.[0]?.number || '';
-
   useImperativeHandle(ref, () => ({
     close: () => {
       swipeableRef.current?.close();
@@ -98,7 +103,7 @@ const ContactListItem = forwardRef<ContactListItemRef, ContactListItemProps>(({
     }
   }));
 
-  const handleCall = async () => {
+  const handleCall = useCallback(async () => {
     if (primaryPhone) {
       // Enhanced haptic feedback for VIP contacts
       if (contact.isVIP) {
@@ -129,9 +134,9 @@ const ContactListItem = forwardRef<ContactListItemRef, ContactListItemProps>(({
     } else {
       Alert.alert('No Phone Number', 'This contact doesn\'t have a phone number.');
     }
-  };
+  }, [primaryPhone, contact.isVIP]);
 
-  const handleMessage = async () => {
+  const handleMessage = useCallback(async () => {
     if (primaryPhone) {
       Vibration.vibrate(30);
       
@@ -157,9 +162,9 @@ const ContactListItem = forwardRef<ContactListItemRef, ContactListItemProps>(({
     } else {
       Alert.alert('No Phone Number', 'This contact doesn\'t have a phone number.');
     }
-  };
+  }, [primaryPhone]);
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     Alert.alert(
       'Delete Contact',
       `Are you sure you want to delete ${contact.name}?`,
@@ -168,63 +173,59 @@ const ContactListItem = forwardRef<ContactListItemRef, ContactListItemProps>(({
         { text: 'Delete', style: 'destructive', onPress: () => onDelete(contact.id) }
       ]
     );
-  };
+  }, [contact.name, contact.id, onDelete]);
 
-  const handleToggleVIP = (e: any) => {
+  const handleToggleVIP = useCallback((e: any) => {
     e.stopPropagation();
     Vibration.vibrate(30);
     onToggleVIP(contact.id);
-  };
+  }, [contact.id, onToggleVIP]);
 
-  const handleSwipeOpen = () => {
+  const handleSwipeOpen = useCallback(() => {
     if (onSwipeOpen) {
       onSwipeOpen(contact.id);
     }
-  };
+  }, [contact.id, onSwipeOpen]);
 
   const renderRightActions = () => (
     <View style={styles.swipeActionContainer}>
       {/* Call Action */}
-      <Animated.View entering={SlideInRight.delay(50).springify()}>
-        <TouchableOpacity 
-          style={[styles.swipeActionButton, styles.callButton]}
-          onPress={handleCall}
-          activeOpacity={0.7}
-        >
-          <View style={styles.actionContent}>
-            {React.createElement(IconButton, {
-              icon: "phone",
-              iconColor: "white",
-              size: iconSizes.md,
-              style: styles.actionIcon
-            })}
-            <Text style={styles.actionLabel}>Call</Text>
-          </View>
-        </TouchableOpacity>
-      </Animated.View>
+      <TouchableOpacity 
+        style={[styles.swipeActionButton, styles.callButton]}
+        onPress={handleCall}
+        activeOpacity={0.7}
+      >
+        <View style={styles.actionContent}>
+          {React.createElement(IconButton, {
+            icon: "phone",
+            iconColor: "white",
+            size: iconSizes.md,
+            style: styles.actionIcon
+          })}
+          <Text style={styles.actionLabel}>Call</Text>
+        </View>
+      </TouchableOpacity>
 
       {/* Message Action */}
-      <Animated.View entering={SlideInRight.delay(100).springify()}>
-        <TouchableOpacity 
-          style={[styles.swipeActionButton, styles.messageButton]}
-          onPress={handleMessage}
-          activeOpacity={0.7}
-        >
-          <View style={styles.actionContent}>
-            {React.createElement(IconButton, {
-              icon: "message",
-              iconColor: "white",
-              size: iconSizes.md,
-              style: styles.actionIcon
-            })}
-            <Text style={styles.actionLabel}>Message</Text>
-          </View>
-        </TouchableOpacity>
-      </Animated.View>
+      <TouchableOpacity 
+        style={[styles.swipeActionButton, styles.messageButton]}
+        onPress={handleMessage}
+        activeOpacity={0.7}
+      >
+        <View style={styles.actionContent}>
+          {React.createElement(IconButton, {
+            icon: "message",
+            iconColor: "white",
+            size: iconSizes.md,
+            style: styles.actionIcon
+          })}
+          <Text style={styles.actionLabel}>Message</Text>
+        </View>
+      </TouchableOpacity>
     </View>
   );
 
-  const getContactSubtitle = () => {
+  const getContactSubtitle = useMemo(() => {
     const parts = [];
     
     if (contact.company) {
@@ -240,7 +241,7 @@ const ContactListItem = forwardRef<ContactListItemRef, ContactListItemProps>(({
     }
     
     return parts.join(' • ');
-  };
+  }, [contact.company, contact.jobTitle, primaryPhone]);
 
   // Ensure we always return a valid element
   if (!contact) {
@@ -296,7 +297,7 @@ const ContactListItem = forwardRef<ContactListItemRef, ContactListItemProps>(({
               {contact.name}
               {contact.isVIP && ' 👑'}
             </Text>
-            <Text style={styles.contactSubtitle}>{getContactSubtitle()}</Text>
+            <Text style={styles.contactSubtitle}>{getContactSubtitle}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.xs }}>
               {contact.group && (
                 <Chip 
@@ -361,7 +362,7 @@ const ContactListItem = forwardRef<ContactListItemRef, ContactListItemProps>(({
       </TouchableRipple>
     </Swipeable>
   );
-});
+}));
 
 ContactListItem.displayName = 'ContactListItem';
 

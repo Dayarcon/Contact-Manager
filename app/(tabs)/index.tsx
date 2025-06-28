@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, FlatList, ScrollView, TouchableOpacity, View } from 'react-native';
 import { Avatar, Button, Card, Chip, FAB, IconButton, Menu, Snackbar, Text, TextInput, useTheme } from 'react-native-paper';
 import Animated, { FadeInUp } from 'react-native-reanimated';
@@ -272,9 +272,6 @@ export default function HomeScreen() {
     console.log('Google sign-in successful, staying on home screen');
     
     try {
-      // Add a small delay to ensure accessToken state is updated
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
       // Check if we need to sync contacts
       const shouldSync = !lastSyncTimestamp || 
         (Date.now() - lastSyncTimestamp) > (30 * 60 * 1000); // 30 minutes
@@ -311,13 +308,43 @@ export default function HomeScreen() {
   }, []); // Empty dependency array to run only once
 
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Debounce search input to improve performance
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 150); // Reduced delay for better responsiveness
+
+    return () => clearTimeout(timeoutId);
+  }, [search]);
+
+  // Combine filter states into a single object to reduce re-renders
+  const [filters, setFilters] = useState({
+    showFavorites: false,
+    showVIP: false,
+    showFamily: false,
+    showFriends: false,
+    showEmergency: false,
+    showRecent: false,
+    selectedGroup: null as string | null,
+    selectedLabel: null as string | null,
+  });
+
+  // Destructure for easier access
+  const { 
+    showFavorites, 
+    showVIP, 
+    showFamily, 
+    showFriends, 
+    showEmergency, 
+    showRecent, 
+    selectedGroup, 
+    selectedLabel 
+  } = filters;
+
+  // Other state variables
   const [searchMode, setSearchMode] = useState(false);
-  const [showFavorites, setShowFavorites] = useState(false);
-  const [showVIP, setShowVIP] = useState(false);
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
-  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
-  const [showEmergency, setShowEmergency] = useState(false);
-  const [showRecent, setShowRecent] = useState(false);
   const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
   const [menuVisible, setMenuVisible] = useState(false);
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
@@ -332,10 +359,6 @@ export default function HomeScreen() {
     sortBy: 'Name'
   });
 
-  // Add state for Family and Friends filters
-  const [showFamily, setShowFamily] = useState(false);
-  const [showFriends, setShowFriends] = useState(false);
-
   // Ensure contacts is always an array
   const safeContacts = contacts || [];
 
@@ -346,124 +369,182 @@ export default function HomeScreen() {
   // Apply route filters on mount
   useEffect(() => {
     if (filter === 'favorites') {
-      setShowFavorites(true);
-      setSelectedGroup(null);
-      setSelectedLabel(null);
-      setShowEmergency(false);
-      setShowRecent(false);
-      setShowVIP(false);
+      setFilters({
+        showFavorites: true,
+        showVIP: false,
+        showFamily: false,
+        showFriends: false,
+        showEmergency: false,
+        showRecent: false,
+        selectedGroup: null,
+        selectedLabel: null,
+      });
     } else if (filter === 'vip') {
-      setShowVIP(true);
-      setShowFavorites(false);
-      setSelectedGroup(null);
-      setSelectedLabel(null);
-      setShowEmergency(false);
-      setShowRecent(false);
+      setFilters({
+        showFavorites: false,
+        showVIP: true,
+        showFamily: false,
+        showFriends: false,
+        showEmergency: false,
+        showRecent: false,
+        selectedGroup: null,
+        selectedLabel: null,
+      });
     } else if (filter === 'group' && filterValue) {
-      setSelectedGroup(Array.isArray(filterValue) ? filterValue[0] : filterValue);
-      setShowFavorites(false);
-      setSelectedLabel(null);
-      setShowEmergency(false);
-      setShowRecent(false);
-      setShowVIP(false);
+      setFilters({
+        showFavorites: false,
+        showVIP: false,
+        showFamily: false,
+        showFriends: false,
+        showEmergency: false,
+        showRecent: false,
+        selectedGroup: Array.isArray(filterValue) ? filterValue[0] : filterValue,
+        selectedLabel: null,
+      });
     } else if (filter === 'label' && filterValue) {
-      setSelectedLabel(Array.isArray(filterValue) ? filterValue[0] : filterValue);
-      setShowFavorites(false);
-      setSelectedGroup(null);
-      setShowEmergency(false);
-      setShowRecent(false);
-      setShowVIP(false);
+      setFilters({
+        showFavorites: false,
+        showVIP: false,
+        showFamily: false,
+        showFriends: false,
+        showEmergency: false,
+        showRecent: false,
+        selectedGroup: null,
+        selectedLabel: Array.isArray(filterValue) ? filterValue[0] : filterValue,
+      });
     } else if (filter === 'emergency') {
-      setShowEmergency(true);
-      setShowFavorites(false);
-      setSelectedGroup(null);
-      setSelectedLabel(null);
-      setShowRecent(false);
-      setShowVIP(false);
+      setFilters({
+        showFavorites: false,
+        showVIP: false,
+        showFamily: false,
+        showFriends: false,
+        showEmergency: true,
+        showRecent: false,
+        selectedGroup: null,
+        selectedLabel: null,
+      });
     } else if (filter === 'recent') {
-      setShowRecent(true);
-      setShowFavorites(false);
-      setSelectedGroup(null);
-      setSelectedLabel(null);
-      setShowEmergency(false);
-      setShowVIP(false);
+      setFilters({
+        showFavorites: false,
+        showVIP: false,
+        showFamily: false,
+        showFriends: false,
+        showEmergency: false,
+        showRecent: true,
+        selectedGroup: null,
+        selectedLabel: null,
+      });
     }
   }, [filter, filterValue]);
 
-  // Unique groups from contacts
-  const groups = Array.from(new Set(safeContacts.map(c => c.group).filter(Boolean)));
+  // Unique groups from contacts - memoized to prevent recalculation, limit to first 10 for performance
+  const groups = useMemo(() => 
+    Array.from(new Set(safeContacts.map(c => c.group).filter(Boolean))).slice(0, 10), 
+    [safeContacts]
+  );
 
-  let filteredContacts = safeContacts;
+  // Memoize stats calculation
+  const stats = useMemo(() => 
+    getContactStats?.() || { total: 0, favorites: 0, vip: 0, groups: {}, recent: 0 }, 
+    [getContactStats, safeContacts]
+  );
 
-  // Apply filters
-  if (showFavorites) {
-    filteredContacts = getFavoriteContacts?.() || [];
-  } else if (showVIP) {
-    filteredContacts = getVIPContacts?.() || [];
-  } else if (showFamily) {
-    filteredContacts = getContactsByGroup?.('Family') || [];
-  } else if (showFriends) {
-    filteredContacts = getContactsByGroup?.('Friends') || [];
-  } else if (selectedGroup) {
-    filteredContacts = getContactsByGroup?.(selectedGroup) || [];
-  } else if (selectedLabel) {
-    filteredContacts = safeContacts.filter(c => c.labels?.includes(selectedLabel));
-  } else if (showEmergency) {
-    filteredContacts = safeContacts.filter(c => c.isEmergencyContact);
-  } else if (showRecent) {
-    filteredContacts = getRecentContacts?.(7) || [];
-  }
+  // Memoize filtered contacts to prevent recalculation on every render
+  const filteredContacts = useMemo(() => {
+    let contacts = safeContacts;
+
+    // Apply filters
+    if (showFavorites) {
+      contacts = getFavoriteContacts?.() || [];
+    } else if (showVIP) {
+      contacts = getVIPContacts?.() || [];
+    } else if (showFamily) {
+      contacts = getContactsByGroup?.('Family') || [];
+    } else if (showFriends) {
+      contacts = getContactsByGroup?.('Friends') || [];
+    } else if (selectedGroup) {
+      contacts = getContactsByGroup?.(selectedGroup) || [];
+    } else if (selectedLabel) {
+      contacts = safeContacts.filter((c: any) => c.labels?.includes(selectedLabel));
+    } else if (showEmergency) {
+      contacts = safeContacts.filter((c: any) => c.isEmergencyContact);
+    } else if (showRecent) {
+      contacts = getRecentContacts?.(7) || [];
+    }
+
+    // Apply search
+    if (debouncedSearch) {
+      contacts = performAdvancedSearch(debouncedSearch, searchFilters);
+    }
+
+    // Sort contacts alphabetically by name
+    return contacts.sort((a: any, b: any) => {
+      const nameA = (a.name || '').toLowerCase();
+      const nameB = (b.name || '').toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+  }, [safeContacts, showFavorites, showVIP, showFamily, showFriends, selectedGroup, selectedLabel, showEmergency, showRecent, debouncedSearch, searchFilters, getFavoriteContacts, getVIPContacts, getContactsByGroup, getRecentContacts]);
 
   const performAdvancedSearch = (query: string, filters: any) => {
     if (!query.trim()) return safeContacts;
     
     const searchTerm = query.toLowerCase();
-    return safeContacts.filter(contact => {
-      // Name search
-      if (filters.name && contact.name?.toLowerCase().includes(searchTerm)) return true;
-      if (filters.name && contact.firstName?.toLowerCase().includes(searchTerm)) return true;
-      if (filters.name && contact.lastName?.toLowerCase().includes(searchTerm)) return true;
+    const searchTermLength = searchTerm.length;
+    
+    return safeContacts.filter((contact: any) => {
+      // Early exit for very short queries
+      if (searchTermLength < 2) return true;
+      
+      // Name search - most common case first
+      if (filters.name) {
+        const name = contact.name?.toLowerCase() || '';
+        if (name.includes(searchTerm)) return true;
+        
+        const firstName = contact.firstName?.toLowerCase() || '';
+        if (firstName.includes(searchTerm)) return true;
+        
+        const lastName = contact.lastName?.toLowerCase() || '';
+        if (lastName.includes(searchTerm)) return true;
+      }
       
       // Company search
-      if (filters.company && contact.company?.toLowerCase().includes(searchTerm)) return true;
-      if (filters.company && contact.jobTitle?.toLowerCase().includes(searchTerm)) return true;
+      if (filters.company) {
+        const company = contact.company?.toLowerCase() || '';
+        if (company.includes(searchTerm)) return true;
+        
+        const jobTitle = contact.jobTitle?.toLowerCase() || '';
+        if (jobTitle.includes(searchTerm)) return true;
+      }
       
-      // Phone search
-      if (filters.phone && contact.phoneNumbers?.some(phone => 
-        phone.number.toLowerCase().includes(searchTerm)
-      )) return true;
+      // Phone search - only if we have phone numbers
+      if (filters.phone && contact.phoneNumbers?.length) {
+        for (const phone of contact.phoneNumbers) {
+          if (phone.number.toLowerCase().includes(searchTerm)) return true;
+        }
+      }
       
-      // Email search
-      if (filters.email && contact.emailAddresses?.some(email => 
-        email.email.toLowerCase().includes(searchTerm)
-      )) return true;
+      // Email search - only if we have emails
+      if (filters.email && contact.emailAddresses?.length) {
+        for (const email of contact.emailAddresses) {
+          if (email.email.toLowerCase().includes(searchTerm)) return true;
+        }
+      }
       
       // Notes search
-      if (filters.notes && contact.notes?.toLowerCase().includes(searchTerm)) return true;
+      if (filters.notes) {
+        const notes = contact.notes?.toLowerCase() || '';
+        if (notes.includes(searchTerm)) return true;
+      }
       
       // Group search
-      if (filters.group && contact.group?.toLowerCase().includes(searchTerm)) return true;
+      if (filters.group) {
+        const group = contact.group?.toLowerCase() || '';
+        if (group.includes(searchTerm)) return true;
+      }
       
       return false;
     });
   };
-
-  // Apply search
-  if (search) {
-    filteredContacts = performAdvancedSearch(search, searchFilters);
-  }
-
-  // Sort contacts alphabetically by name
-  const sortContactsAlphabetically = (contacts: any[]) => {
-    return contacts.sort((a, b) => {
-      const nameA = (a.name || '').toLowerCase();
-      const nameB = (b.name || '').toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-  };
-
-  // Apply alphabetical sorting
-  filteredContacts = sortContactsAlphabetically(filteredContacts);
 
   const handleToggleFavorite = (id: string, isNowFavorite: boolean) => {
     toggleFavorite?.(id);
@@ -471,12 +552,16 @@ export default function HomeScreen() {
 
   const clearAllFilters = () => {
     // Reset all filter states
-    setShowFavorites(false);
-    setShowVIP(false);
-    setSelectedGroup(null);
-    setSelectedLabel(null);
-    setShowEmergency(false);
-    setShowRecent(false);
+    setFilters({
+      showFavorites: false,
+      showVIP: false,
+      showFamily: false,
+      showFriends: false,
+      showEmergency: false,
+      showRecent: false,
+      selectedGroup: null,
+      selectedLabel: null,
+    });
     
     // Reset search filters
     setSearchFilters({
@@ -502,56 +587,50 @@ export default function HomeScreen() {
     setOpenSwipeId(contactId);
   };
 
-  const stats = getContactStats?.() || { total: 0, favorites: 0, vip: 0, groups: {}, recent: 0 };
-
-  const renderContact = ({ item, index }: { item: any; index: number }) => {
+  const renderContact = useCallback(({ item, index }: { item: any; index: number }) => {
     return (
-      <Animated.View
-        entering={FadeInUp.delay(index * 80).springify()}
-      >
-        <ContactListItem
-          ref={(ref: ContactListItemRef | null) => {
-            swipeRefs.current[item.id] = ref;
-          }}
-          contact={item}
-          onEdit={(id: string) => router.push({ pathname: '/edit-contact', params: { id } })}
-          onDelete={(id: string) => {
-            if (deleteContact) {
-              deleteContact(id);
-            }
-          }}
-          onToggleFavorite={(id: string) => {
-            if (toggleFavorite) {
-              toggleFavorite(id);
-            }
-          }}
-          onToggleVIP={(id: string) => {
-            if (toggleVIP) {
-              toggleVIP(id);
-            }
-          }}
-          onPress={(contact: any) => {
-            router.push({ pathname: '/contact-details', params: { id: contact.id } });
-          }}
-          onSwipeOpen={handleSwipeOpen}
-        />
-      </Animated.View>
+      <ContactListItem
+        ref={(ref: ContactListItemRef | null) => {
+          swipeRefs.current[item.id] = ref;
+        }}
+        contact={item}
+        onEdit={(id: string) => router.push({ pathname: '/edit-contact', params: { id } })}
+        onDelete={(id: string) => {
+          if (deleteContact) {
+            deleteContact(id);
+          }
+        }}
+        onToggleFavorite={(id: string) => {
+          if (toggleFavorite) {
+            toggleFavorite(id);
+          }
+        }}
+        onToggleVIP={(id: string) => {
+          if (toggleVIP) {
+            toggleVIP(id);
+          }
+        }}
+        onPress={(contact: any) => {
+          router.push({ pathname: '/contact-details', params: { id: contact.id } });
+        }}
+        onSwipeOpen={handleSwipeOpen}
+      />
     );
-  };
+  }, [deleteContact, toggleFavorite, toggleVIP, handleSwipeOpen, router]);
 
-  const renderEmptyState = () => (
+  const renderEmptyState = useMemo(() => (
     <EmptyState>
       <EmptyIcon>👋</EmptyIcon>
       <EmptyTitle>
-        {search ? 'No contacts found' : 'No contacts yet'}
+        {debouncedSearch ? 'No contacts found' : 'No contacts yet'}
       </EmptyTitle>
       <EmptySubtitle>
-        {search 
+        {debouncedSearch 
           ? 'Try adjusting your search terms or check your filters'
           : 'Add your first contact to get started with managing your connections'
         }
       </EmptySubtitle>
-      {!search && (
+      {!debouncedSearch && (
         // @ts-ignore
         <IconButton
           icon="plus"
@@ -561,9 +640,9 @@ export default function HomeScreen() {
         />
       )}
     </EmptyState>
-  );
+  ), [debouncedSearch, router]);
 
-  const SearchFilters = () => (
+  const SearchFilters = useMemo(() => (
     <Animated.View entering={FadeInUp.springify()}>
       <Card style={{ 
         marginHorizontal: 20,
@@ -689,7 +768,7 @@ export default function HomeScreen() {
         </Card.Content>
       </Card>
     </Animated.View>
-  );
+  ), [showAdvancedSearch, searchFilters, clearAllFilters]);
 
   const handleGoogleAuth = async () => {
     try {
@@ -848,7 +927,7 @@ export default function HomeScreen() {
           </GoogleButton>
         </SearchContainer>
 
-        {showAdvancedSearch && <SearchFilters />}
+        {showAdvancedSearch && SearchFilters}
 
         <ChipRow>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -864,12 +943,16 @@ export default function HomeScreen() {
             <Chip
               selected={showFavorites}
               onPress={() => {
-                setShowFavorites(!showFavorites);
-                setShowVIP(false);
-                setSelectedGroup(null);
-                setSelectedLabel(null);
-                setShowEmergency(false);
-                setShowRecent(false);
+                setFilters({
+                  showFavorites: true,
+                  showVIP: false,
+                  showFamily: false,
+                  showFriends: false,
+                  showEmergency: false,
+                  showRecent: false,
+                  selectedGroup: null,
+                  selectedLabel: null,
+                });
               }}
               textStyle={{ color: 'black', fontWeight: '600' }}
               style={{ marginRight: 12 }}
@@ -880,12 +963,16 @@ export default function HomeScreen() {
             <Chip
               selected={showVIP}
               onPress={() => {
-                setShowVIP(!showVIP);
-                setShowFavorites(false);
-                setSelectedGroup(null);
-                setSelectedLabel(null);
-                setShowEmergency(false);
-                setShowRecent(false);
+                setFilters({
+                  showFavorites: false,
+                  showVIP: true,
+                  showFamily: false,
+                  showFriends: false,
+                  showEmergency: false,
+                  showRecent: false,
+                  selectedGroup: null,
+                  selectedLabel: null,
+                });
               }}
               textStyle={{ color: 'black', fontWeight: '600' }}
               style={{ marginRight: 12 }}
@@ -896,12 +983,16 @@ export default function HomeScreen() {
             <Chip
               selected={showRecent}
               onPress={() => {
-                setShowRecent(!showRecent);
-                setShowFavorites(false);
-                setShowVIP(false);
-                setSelectedGroup(null);
-                setSelectedLabel(null);
-                setShowEmergency(false);
+                setFilters({
+                  showFavorites: false,
+                  showVIP: false,
+                  showFamily: false,
+                  showFriends: false,
+                  showEmergency: false,
+                  showRecent: true,
+                  selectedGroup: null,
+                  selectedLabel: null,
+                });
               }}
               textStyle={{ color: 'black', fontWeight: '600' }}
               style={{ marginRight: 12 }}
@@ -912,12 +1003,16 @@ export default function HomeScreen() {
             <Chip
               selected={showEmergency}
               onPress={() => {
-                setShowEmergency(!showEmergency);
-                setShowFavorites(false);
-                setShowVIP(false);
-                setSelectedGroup(null);
-                setSelectedLabel(null);
-                setShowRecent(false);
+                setFilters({
+                  showFavorites: false,
+                  showVIP: false,
+                  showFamily: false,
+                  showFriends: false,
+                  showEmergency: true,
+                  showRecent: false,
+                  selectedGroup: null,
+                  selectedLabel: null,
+                });
               }}
               textStyle={{ color: 'black', fontWeight: '600' }}
               style={{ marginRight: 12 }}
@@ -928,14 +1023,16 @@ export default function HomeScreen() {
             <Chip
               selected={showFamily}
               onPress={() => {
-                setShowFamily(!showFamily);
-                setShowFavorites(false);
-                setShowVIP(false);
-                setShowFriends(false);
-                setSelectedGroup(null);
-                setSelectedLabel(null);
-                setShowEmergency(false);
-                setShowRecent(false);
+                setFilters({
+                  showFavorites: false,
+                  showVIP: false,
+                  showFamily: true,
+                  showFriends: false,
+                  showEmergency: false,
+                  showRecent: false,
+                  selectedGroup: null,
+                  selectedLabel: null,
+                });
               }}
               textStyle={{ color: 'black', fontWeight: '600' }}
               style={{ marginRight: 12 }}
@@ -946,14 +1043,16 @@ export default function HomeScreen() {
             <Chip
               selected={showFriends}
               onPress={() => {
-                setShowFriends(!showFriends);
-                setShowFavorites(false);
-                setShowVIP(false);
-                setShowFamily(false);
-                setSelectedGroup(null);
-                setSelectedLabel(null);
-                setShowEmergency(false);
-                setShowRecent(false);
+                setFilters({
+                  showFavorites: false,
+                  showVIP: false,
+                  showFamily: false,
+                  showFriends: true,
+                  showEmergency: false,
+                  showRecent: false,
+                  selectedGroup: null,
+                  selectedLabel: null,
+                });
               }}
               textStyle={{ color: 'black', fontWeight: '600' }}
               style={{ marginRight: 12 }}
@@ -966,12 +1065,16 @@ export default function HomeScreen() {
                 key={group}
                 selected={selectedGroup === group}
                 onPress={() => {
-                  setSelectedGroup(selectedGroup === group ? null : group);
-                  setShowFavorites(false);
-                  setShowVIP(false);
-                  setSelectedLabel(null);
-                  setShowEmergency(false);
-                  setShowRecent(false);
+                  setFilters({
+                    showFavorites: false,
+                    showVIP: false,
+                    showFamily: false,
+                    showFriends: false,
+                    showEmergency: false,
+                    showRecent: false,
+                    selectedGroup: selectedGroup === group ? null : group,
+                    selectedLabel: null,
+                  });
                 }}
                 textStyle={{ color: 'black', fontWeight: '600' }}
                 style={{ marginRight: 12 }}
@@ -987,14 +1090,27 @@ export default function HomeScreen() {
 
       <ContactListContainer>
         {filteredContacts.length === 0 ? (
-          renderEmptyState()
+          renderEmptyState
         ) : (
           <FlatList
             data={filteredContacts}
             renderItem={renderContact}
-            keyExtractor={(item: any) => item.id}
+            keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 100 }}
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={5}
+            windowSize={5}
+            initialNumToRender={5}
+            updateCellsBatchingPeriod={50}
+            disableVirtualization={false}
+            getItemLayout={(data, index) => ({
+              length: 100,
+              offset: 100 * index,
+              index,
+            })}
+            onEndReachedThreshold={0.5}
+            onEndReached={() => {}}
           />
         )}
       </ContactListContainer>
