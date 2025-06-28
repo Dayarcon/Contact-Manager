@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 // Replace these with your own Google OAuth credentials
 const GOOGLE_WEB_CLIENT_ID = '66493933765-up9oj0479db6h4qri889qva59mlv03di.apps.googleusercontent.com';
@@ -33,6 +33,21 @@ export function useGoogleAuth() {
     });
     
     checkExistingToken();
+    
+    // Add app state listener to refresh tokens when app becomes active
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === 'active') {
+        console.log('App became active, checking token validity...');
+        // Refresh token when app becomes active
+        refreshTokenIfNeeded();
+      }
+    };
+    
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    
+    return () => {
+      subscription?.remove();
+    };
   }, []);
 
   // Reset response processing flag when accessToken changes
@@ -63,13 +78,89 @@ export function useGoogleAuth() {
     }
   }, [accessToken, onSignInSuccess, hasProcessedResponse, isSigningIn]);
 
+  const refreshTokenIfNeeded = async () => {
+    try {
+      const isSignedIn = await GoogleSignin.hasPreviousSignIn();
+      if (isSignedIn && accessToken) {
+        // Test current token
+        try {
+          const testResponse = await fetch('https://www.googleapis.com/userinfo/v2/me', {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          if (!testResponse.ok) {
+            console.log('Token expired, refreshing...');
+            const tokens = await GoogleSignin.getTokens();
+            if (tokens?.accessToken) {
+              setAccessToken(tokens.accessToken);
+              await AsyncStorage.setItem('googleAccessToken', tokens.accessToken);
+              console.log('Token refreshed successfully');
+            }
+          }
+        } catch (error) {
+          console.log('Token validation failed, refreshing...');
+          const tokens = await GoogleSignin.getTokens();
+          if (tokens?.accessToken) {
+            setAccessToken(tokens.accessToken);
+            await AsyncStorage.setItem('googleAccessToken', tokens.accessToken);
+            console.log('Token refreshed successfully');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing token:', error);
+    }
+  };
+
   const checkExistingToken = async () => {
     try {
-      const token = await AsyncStorage.getItem('googleAccessToken');
-      if (token) {
-        setAccessToken(token);
-        await getUserInfo(token);
+      console.log('Checking for existing Google sign-in...');
+      
+      // First check if user is signed in with GoogleSignin
+      const isSignedIn = await GoogleSignin.hasPreviousSignIn();
+      
+      if (isSignedIn) {
+        console.log('User has previous sign-in, getting fresh tokens...');
+        try {
+          const tokens = await GoogleSignin.getTokens();
+          if (tokens?.accessToken) {
+            console.log('Successfully retrieved fresh tokens on app startup');
+            setAccessToken(tokens.accessToken);
+            await AsyncStorage.setItem('googleAccessToken', tokens.accessToken);
+            await getUserInfo(tokens.accessToken);
+            return;
+          }
+        } catch (error) {
+          console.error('Failed to get fresh tokens on startup:', error);
+          // Clear stored token if we can't get fresh ones
+          await AsyncStorage.removeItem('googleAccessToken');
+        }
       }
+      
+      // Fallback: check stored token
+      const storedToken = await AsyncStorage.getItem('googleAccessToken');
+      if (storedToken) {
+        console.log('Found stored token, validating...');
+        try {
+          // Test if stored token is still valid
+          const testResponse = await fetch('https://www.googleapis.com/userinfo/v2/me', {
+            headers: { Authorization: `Bearer ${storedToken}` },
+          });
+          if (testResponse.ok) {
+            console.log('Stored token is still valid');
+            setAccessToken(storedToken);
+            await getUserInfo(storedToken);
+            return;
+          } else {
+            console.log('Stored token is invalid, removing...');
+            await AsyncStorage.removeItem('googleAccessToken');
+          }
+        } catch (error) {
+          console.error('Error validating stored token:', error);
+          await AsyncStorage.removeItem('googleAccessToken');
+        }
+      }
+      
+      console.log('No valid sign-in found');
     } catch (error) {
       console.error('Error checking existing token:', error);
     }
@@ -125,27 +216,49 @@ export function useGoogleAuth() {
   };
 
   const ensureAccessToken = async () => {
-    if (accessToken) {
-      return accessToken;
-    }
-    
-    const isSignedIn = await GoogleSignin.hasPreviousSignIn();
-    
-    if (isSignedIn) {
-      try {
-        const tokens = await GoogleSignin.getTokens();
-        
-        if (tokens?.accessToken) {
-          setAccessToken(tokens.accessToken);
-          await AsyncStorage.setItem('googleAccessToken', tokens.accessToken);
-          return tokens.accessToken;
+    try {
+      // First, check if we have a stored token
+      if (accessToken) {
+        // Test if the current token is still valid
+        try {
+          const testResponse = await fetch('https://www.googleapis.com/userinfo/v2/me', {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          if (testResponse.ok) {
+            return accessToken; // Token is still valid
+          }
+        } catch (error) {
+          console.log('Current token is invalid, will try to refresh');
         }
-      } catch (error) {
-        console.error('Failed to get tokens from GoogleSignin:', error);
       }
+      
+      // Try to get fresh tokens from GoogleSignin
+      const isSignedIn = await GoogleSignin.hasPreviousSignIn();
+      
+      if (isSignedIn) {
+        try {
+          console.log('User is signed in, getting fresh tokens...');
+          const tokens = await GoogleSignin.getTokens();
+          
+          if (tokens?.accessToken) {
+            console.log('Successfully got fresh access token');
+            setAccessToken(tokens.accessToken);
+            await AsyncStorage.setItem('googleAccessToken', tokens.accessToken);
+            return tokens.accessToken;
+          }
+        } catch (error) {
+          console.error('Failed to get fresh tokens from GoogleSignin:', error);
+          // If we can't get fresh tokens, the user needs to sign in again
+          throw new Error('Access token expired and could not be refreshed. Please sign in again.');
+        }
+      }
+      
+      // If we get here, user is not signed in
+      throw new Error('Not signed in to Google');
+    } catch (error) {
+      console.error('ensureAccessToken error:', error);
+      throw error;
     }
-    
-    throw new Error('Not signed in to Google');
   };
 
   const testOAuthConfig = () => {
@@ -266,12 +379,14 @@ export function useGoogleAuth() {
 
       // If token is expired, try to refresh it
       if (response.status === 401) {
+        console.log('Access token expired, attempting to refresh...');
         try {
           const tokens = await GoogleSignin.getTokens();
           const newAccessToken = tokens.accessToken;
           setAccessToken(newAccessToken);
           await AsyncStorage.setItem('googleAccessToken', newAccessToken);
           
+          console.log('Token refreshed, retrying contacts request...');
           response = await fetch(
             'https://people.googleapis.com/v1/people/me/connections?personFields=names,phoneNumbers,emailAddresses,organizations,biographies,birthdays,addresses,urls,photos,memberships&pageSize=1000',
             {
@@ -283,7 +398,35 @@ export function useGoogleAuth() {
           );
         } catch (refreshError) {
           console.error('Failed to refresh token:', refreshError);
-          throw new Error('Access token expired and could not be refreshed. Please sign in again.');
+          // Don't throw error immediately, try one more time with fresh sign-in
+          try {
+            console.log('Attempting fresh sign-in to get new tokens...');
+            const isSignedIn = await GoogleSignin.hasPreviousSignIn();
+            if (isSignedIn) {
+              const freshTokens = await GoogleSignin.getTokens();
+              if (freshTokens?.accessToken) {
+                setAccessToken(freshTokens.accessToken);
+                await AsyncStorage.setItem('googleAccessToken', freshTokens.accessToken);
+                
+                response = await fetch(
+                  'https://people.googleapis.com/v1/people/me/connections?personFields=names,phoneNumbers,emailAddresses,organizations,biographies,birthdays,addresses,urls,photos,memberships&pageSize=1000',
+                  {
+                    headers: {
+                      Authorization: `Bearer ${freshTokens.accessToken}`,
+                      'Content-Type': 'application/json',
+                    },
+                  }
+                );
+              } else {
+                throw new Error('Could not get fresh tokens');
+              }
+            } else {
+              throw new Error('User not signed in');
+            }
+          } catch (finalError) {
+            console.error('All token refresh attempts failed:', finalError);
+            throw new Error('Access token expired and could not be refreshed. Please sign in again.');
+          }
         }
       }
 
