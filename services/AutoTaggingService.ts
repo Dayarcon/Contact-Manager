@@ -470,6 +470,16 @@ class AutoTaggingService {
   // Auto-apply tags to a contact
   async autoTagContact(contact: Contact): Promise<string[]> {
     const suggestions = this.analyzeContact(contact);
+    
+    // For Google contacts, be more conservative with auto-tagging
+    // Don't override existing labels that came from Google
+    const isGoogleContact = contact.googleResourceName || contact.group === 'Google Contacts';
+    
+    if (isGoogleContact && contact.labels && contact.labels.length > 0) {
+      console.log('Skipping auto-tagging for Google contact with existing labels:', contact.name);
+      return [];
+    }
+    
     const autoApplyTags = suggestions
       .filter(suggestion => {
         const rule = this.tagRules.find(r => r.name === suggestion.tag);

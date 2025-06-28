@@ -597,27 +597,96 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      // Check if we already have Google contacts in local storage
+      const existingGoogleContacts = contacts.filter(c => c.googleResourceName);
+      const hasGoogleContacts = existingGoogleContacts.length > 0;
+
+      // If we have Google contacts and this isn't a force sync, check if we really need to sync
+      if (hasGoogleContacts && !forceSync) {
+        console.log(`Found ${existingGoogleContacts.length} existing Google contacts, checking if sync is needed...`);
+        
+        // Only sync if it's been more than 30 minutes since last sync
+        if (lastSyncTimestamp && (Date.now() - lastSyncTimestamp) < (30 * 60 * 1000)) {
+          console.log('Google contacts are recent, skipping sync');
+          return;
+        }
+      }
+
       setIsSyncing(true);
       console.log('Starting Google contacts sync...');
 
-      const googleContacts = await getContacts();
+      const startTime = Date.now();
       
-      // Filter out contacts that already exist (by Google resource name)
+      // Create a map for faster lookups
       const existingGoogleResourceNames = new Set(
         contacts
           .filter(c => c.googleResourceName)
           .map(c => c.googleResourceName)
       );
 
-      const newContacts = googleContacts.filter(
-        (contact: Contact) => !existingGoogleResourceNames.has(contact.googleResourceName)
+      // Create a map of existing contacts for faster updates
+      const existingContactsMap = new Map(
+        contacts.map(contact => [contact.googleResourceName, contact])
       );
 
-      if (newContacts.length > 0) {
-        setContacts(prev => [...newContacts, ...prev]);
-        console.log(`Imported ${newContacts.length} new contacts from Google`);
+      let processedCount = 0;
+      let newContactsCount = 0;
+      let updatedCount = 0;
+
+      // Process contacts progressively as they come in
+      const onContactProcessed = (googleContact: Contact) => {
+        processedCount++;
+        
+        if (existingContactsMap.has(googleContact.googleResourceName)) {
+          // Update existing contact
+          const existingContact = existingContactsMap.get(googleContact.googleResourceName)!;
+          const shouldBeFavorite = googleContact.isFavorite !== existingContact.isFavorite;
+          const shouldBeVIP = googleContact.isVIP !== existingContact.isVIP;
+          
+          if (shouldBeFavorite || shouldBeVIP) {
+            updatedCount++;
+            const updatedContact = {
+              ...existingContact,
+              isFavorite: googleContact.isFavorite,
+              isVIP: googleContact.isVIP,
+              updatedAt: new Date().toISOString()
+            };
+            
+            // Update the contact in the map
+            existingContactsMap.set(googleContact.googleResourceName, updatedContact);
+            
+            // Update the UI immediately
+            setContacts(prev => 
+              prev.map(c => 
+                c.googleResourceName === googleContact.googleResourceName ? updatedContact : c
+              )
+            );
+          }
+        } else {
+          // Add new contact
+          newContactsCount++;
+          
+          // Add to the map
+          existingContactsMap.set(googleContact.googleResourceName, googleContact);
+          
+          // Add to UI immediately
+          setContacts(prev => [...prev, googleContact]);
+        }
+      };
+
+      // Call getContacts with the callback for progressive loading
+      const googleContacts = await (getContacts as any)(onContactProcessed);
+      const fetchTime = Date.now() - startTime;
+      console.log(`Fetched and processed ${googleContacts.length} contacts from Google in ${fetchTime}ms`);
+
+      const processTime = Date.now() - startTime;
+
+      if (newContactsCount > 0) {
+        console.log(`✅ Imported ${newContactsCount} new contacts from Google in ${processTime}ms`);
+      } else if (updatedCount > 0) {
+        console.log(`✅ Updated ${updatedCount} existing contacts with new favorite/VIP status in ${processTime}ms`);
       } else {
-        console.log('No new contacts to import from Google');
+        console.log(`✅ No changes needed - sync completed in ${processTime}ms`);
       }
 
       // Update sync timestamp

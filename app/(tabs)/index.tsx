@@ -258,7 +258,7 @@ export default function HomeScreen() {
   const swipeRefs = useRef<{ [key: string]: ContactListItemRef | null }>({});
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null);
   
-  const { contacts, isLoading, deleteContact, toggleFavorite, toggleVIP, searchContacts, getFavoriteContacts, getVIPContacts, getRecentContacts, getContactsByGroup, getContactStats, syncGoogleContacts, isSyncing } = safeContext;
+  const { contacts, isLoading, deleteContact, toggleFavorite, toggleVIP, searchContacts, getFavoriteContacts, getVIPContacts, getRecentContacts, getContactsByGroup, getContactStats, syncGoogleContacts, isSyncing, lastSyncTimestamp } = safeContext;
 
   const { isSignedIn, userInfo, signIn, signOut, setSignInSuccessCallback } = useGoogleAuth();
   const [isAuthLoading, setIsAuthLoading] = useState(false);
@@ -272,9 +272,21 @@ export default function HomeScreen() {
     console.log('Google sign-in successful, staying on home screen');
     
     try {
-      // Automatically sync Google contacts after successful sign-in (force sync on sign-in)
-      await syncGoogleContactsRef.current(true);
-      setSnackbar({ visible: true, message: 'Successfully signed in with Google and synced contacts! 🎉' });
+      // Add a small delay to ensure accessToken state is updated
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Check if we need to sync contacts
+      const shouldSync = !lastSyncTimestamp || 
+        (Date.now() - lastSyncTimestamp) > (30 * 60 * 1000); // 30 minutes
+      
+      if (shouldSync) {
+        console.log('Syncing contacts after sign-in...');
+        await syncGoogleContactsRef.current(false); // Don't force sync, let the logic decide
+        setSnackbar({ visible: true, message: 'Successfully signed in with Google and synced contacts! 🎉' });
+      } else {
+        console.log('Contacts are up to date, skipping sync');
+        setSnackbar({ visible: true, message: 'Successfully signed in with Google! Your contacts are up to date.' });
+      }
     } catch (error) {
       console.error('Error syncing contacts after sign-in:', error);
       setSnackbar({ visible: true, message: 'Signed in with Google, but failed to sync contacts. You can try syncing manually in Settings.' });
@@ -285,7 +297,7 @@ export default function HomeScreen() {
       // If we can go back, we might be on a different screen, so navigate to home
       router.replace('/(tabs)');
     }
-  }, [router]); // Remove syncGoogleContacts from dependencies
+  }, [router, lastSyncTimestamp]);
 
   // Set up success callback only once
   useEffect(() => {
@@ -319,6 +331,10 @@ export default function HomeScreen() {
     type: 'All',
     sortBy: 'Name'
   });
+
+  // Add state for Family and Friends filters
+  const [showFamily, setShowFamily] = useState(false);
+  const [showFriends, setShowFriends] = useState(false);
 
   // Ensure contacts is always an array
   const safeContacts = contacts || [];
@@ -384,6 +400,10 @@ export default function HomeScreen() {
     filteredContacts = getFavoriteContacts?.() || [];
   } else if (showVIP) {
     filteredContacts = getVIPContacts?.() || [];
+  } else if (showFamily) {
+    filteredContacts = getContactsByGroup?.('Family') || [];
+  } else if (showFriends) {
+    filteredContacts = getContactsByGroup?.('Friends') || [];
   } else if (selectedGroup) {
     filteredContacts = getContactsByGroup?.(selectedGroup) || [];
   } else if (selectedLabel) {
@@ -903,6 +923,42 @@ export default function HomeScreen() {
               style={{ marginRight: 12 }}
             >
               Emergency
+            </Chip>
+            
+            <Chip
+              selected={showFamily}
+              onPress={() => {
+                setShowFamily(!showFamily);
+                setShowFavorites(false);
+                setShowVIP(false);
+                setShowFriends(false);
+                setSelectedGroup(null);
+                setSelectedLabel(null);
+                setShowEmergency(false);
+                setShowRecent(false);
+              }}
+              textStyle={{ color: 'black', fontWeight: '600' }}
+              style={{ marginRight: 12 }}
+            >
+              Family
+            </Chip>
+            
+            <Chip
+              selected={showFriends}
+              onPress={() => {
+                setShowFriends(!showFriends);
+                setShowFavorites(false);
+                setShowVIP(false);
+                setShowFamily(false);
+                setSelectedGroup(null);
+                setSelectedLabel(null);
+                setShowEmergency(false);
+                setShowRecent(false);
+              }}
+              textStyle={{ color: 'black', fontWeight: '600' }}
+              style={{ marginRight: 12 }}
+            >
+              Friends
             </Chip>
             
             {groups.map((group) => (

@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { Alert, ScrollView, View } from 'react-native';
 import { Button, Card, IconButton, Snackbar, Switch, Text } from 'react-native-paper';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import styled from 'styled-components/native';
@@ -165,7 +165,13 @@ export default function SettingsScreen() {
   const [loading, setLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const { isSignedIn, signOut, loading: googleLoading } = useGoogleAuth();
+  const { signIn, signOut, isSignedIn, getGoogleContactGroups, loading: googleLoading } = useGoogleAuth() || {
+    signIn: () => Promise.resolve(),
+    signOut: () => Promise.resolve(),
+    isSignedIn: false,
+    getGoogleContactGroups: () => Promise.resolve([]),
+    loading: false
+  };
   const [appAvailability, setAppAvailability] = useState({
     whatsapp: false,
     telegram: false,
@@ -179,8 +185,8 @@ export default function SettingsScreen() {
 
   const { contacts, importContacts, isLoading, syncGoogleContacts, isSyncing, lastSyncTimestamp } = useContacts() || {
     contacts: [],
-    importContacts: () => console.warn('Context not available'),
-    isLoading: true,
+    importContacts: () => console.warn('ContactsProvider not available'),
+    isLoading: false,
     syncGoogleContacts: () => Promise.resolve(),
     isSyncing: false,
     lastSyncTimestamp: null
@@ -189,8 +195,12 @@ export default function SettingsScreen() {
   const geoLocationService = GeoLocationService.getInstance();
   const locationStats = geoLocationService.getLocationStats();
 
+  const [googleGroups, setGoogleGroups] = useState<any[]>([]);
+  const [showGoogleGroups, setShowGoogleGroups] = useState(false);
+
   useEffect(() => {
     loadAppAvailability();
+    loadGoogleGroups();
   }, []);
 
   const loadAppAvailability = async () => {
@@ -413,6 +423,18 @@ export default function SettingsScreen() {
     } catch (error) {
       console.error('Error signing out:', error);
       setSnackbar({ visible: true, message: 'Failed to sign out' });
+    }
+  };
+
+  // Load Google contact groups
+  const loadGoogleGroups = async () => {
+    if (isSignedIn) {
+      try {
+        const groups = await getGoogleContactGroups();
+        setGoogleGroups(groups);
+      } catch (error) {
+        console.error('Error loading Google groups:', error);
+      }
     }
   };
 
@@ -706,6 +728,75 @@ export default function SettingsScreen() {
             </Card.Content>
           </ExportSection>
         </Animated.View>
+
+        {/* Google Contact Groups Section */}
+        {isSignedIn && googleGroups.length > 0 && (
+          <Animated.View entering={FadeInUp.delay(350).springify()}>
+            <ExportSection>
+              <Card.Content style={{ padding: 24 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                  <Text style={{ 
+                    fontSize: 20, 
+                    fontWeight: '800', 
+                    color: '#1a1a1a',
+                    letterSpacing: 0.5
+                  }}>
+                    📋 Google Contact Groups
+                  </Text>
+                  <IconButton
+                    icon={showGoogleGroups ? "chevron-up" : "chevron-down"}
+                    iconColor="#666"
+                    size={24}
+                    onPress={() => setShowGoogleGroups(!showGoogleGroups)}
+                  />
+                </View>
+                
+                <Text style={{ 
+                  fontSize: 14, 
+                  color: '#666666', 
+                  marginBottom: 20,
+                  lineHeight: 20
+                }}>
+                  Available contact groups in your Google account. These help map group IDs to actual names.
+                </Text>
+
+                {showGoogleGroups && (
+                  <View style={{ 
+                    backgroundColor: '#f8f9fa',
+                    borderRadius: 12,
+                    padding: 16,
+                    maxHeight: 200
+                  }}>
+                    <ScrollView showsVerticalScrollIndicator={true}>
+                      {googleGroups.map((group, index) => (
+                        <View key={index} style={{ 
+                          flexDirection: 'row', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center',
+                          paddingVertical: 8,
+                          borderBottomWidth: index < googleGroups.length - 1 ? 1 : 0,
+                          borderBottomColor: '#e0e0e0'
+                        }}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 14, fontWeight: '600', color: '#1a1a1a' }}>
+                              {group.name || 'Unnamed Group'}
+                            </Text>
+                            <Text style={{ fontSize: 12, color: '#666', marginTop: 2 }}>
+                              {group.resourceName}
+                            </Text>
+                          </View>
+                          <Text style={{ fontSize: 12, color: '#999' }}>
+                            {group.memberCount || 0} contacts
+                          </Text>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+              </Card.Content>
+            </ExportSection>
+          </Animated.View>
+        )}
 
         <Animated.View entering={FadeInUp.delay(400).springify()}>
           <ExportSection>
