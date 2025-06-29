@@ -8,6 +8,8 @@ import styled from 'styled-components/native';
 import ContactListItem, { ContactListItemRef } from '../../components/ContactListItem';
 import { useContacts } from '../../context/ContactsContext';
 import { useGoogleAuth } from '../../context/GoogleAuthContext';
+import { usePerformance } from '../../hooks/usePerformance';
+import { PERFORMANCE_CONFIG, debounce, optimizedSearch, performanceCache, performanceMonitor } from '../../utils/performance';
 
 const { width, height } = Dimensions.get('window');
 
@@ -205,6 +207,14 @@ export default function HomeScreen() {
   const params = useLocalSearchParams();
   const theme = useTheme();
   const context = useContacts();
+  const { startRenderTimer, endRenderTimer, measureInteraction } = usePerformance('HomeScreen');
+  
+  // Start performance monitoring
+  useEffect(() => {
+    startRenderTimer();
+    return () => endRenderTimer();
+  }, []);
+
   // Fallback theme if needed
   const safeTheme = theme || {
     colors: {
@@ -485,66 +495,61 @@ export default function HomeScreen() {
     });
   }, [safeContacts, showFavorites, showVIP, showFamily, showFriends, selectedGroup, selectedLabel, showEmergency, showRecent, debouncedSearch, searchFilters, getFavoriteContacts, getVIPContacts, getContactsByGroup, getRecentContacts]);
 
-  const performAdvancedSearch = (query: string, filters: any) => {
-    if (!query.trim()) return safeContacts;
+  // Optimized search with caching
+  const performAdvancedSearch = useCallback((query: string, filters: any) => {
+    performanceMonitor.start('search');
     
-    const searchTerm = query.toLowerCase();
-    const searchTermLength = searchTerm.length;
+    const cacheKey = `search_${query}_${JSON.stringify(filters)}`;
+    const cachedResult = performanceCache.get(cacheKey);
     
-    return safeContacts.filter((contact: any) => {
-      // Early exit for very short queries
-      if (searchTermLength < 2) return true;
-      
-      // Name search - most common case first
-      if (filters.name) {
-        const name = contact.name?.toLowerCase() || '';
-        if (name.includes(searchTerm)) return true;
-        
-        const firstName = contact.firstName?.toLowerCase() || '';
-        if (firstName.includes(searchTerm)) return true;
-        
-        const lastName = contact.lastName?.toLowerCase() || '';
-        if (lastName.includes(searchTerm)) return true;
-      }
-      
-      // Company search
-      if (filters.company) {
-        const company = contact.company?.toLowerCase() || '';
-        if (company.includes(searchTerm)) return true;
-        
-        const jobTitle = contact.jobTitle?.toLowerCase() || '';
-        if (jobTitle.includes(searchTerm)) return true;
-      }
-      
-      // Phone search - only if we have phone numbers
-      if (filters.phone && contact.phoneNumbers?.length) {
-        for (const phone of contact.phoneNumbers) {
-          if (phone.number.toLowerCase().includes(searchTerm)) return true;
-        }
-      }
-      
-      // Email search - only if we have emails
-      if (filters.email && contact.emailAddresses?.length) {
-        for (const email of contact.emailAddresses) {
-          if (email.email.toLowerCase().includes(searchTerm)) return true;
-        }
-      }
-      
-      // Notes search
-      if (filters.notes) {
-        const notes = contact.notes?.toLowerCase() || '';
-        if (notes.includes(searchTerm)) return true;
-      }
-      
-      // Group search
-      if (filters.group) {
-        const group = contact.group?.toLowerCase() || '';
-        if (group.includes(searchTerm)) return true;
-      }
-      
-      return false;
+    if (cachedResult) {
+      performanceMonitor.end('search');
+      return cachedResult;
+    }
+
+    const results = optimizedSearch(safeContacts, query, {
+      maxResults: PERFORMANCE_CONFIG.MAX_SEARCH_RESULTS,
+      fuzzyMatch: true,
     });
-  };
+
+    // Apply additional filters
+    let filteredResults = results;
+    
+    if (filters.type && filters.type !== 'All') {
+      filteredResults = filteredResults.filter((c: any) => c.businessType === filters.type);
+    }
+
+    // Sort results
+    if (filters.sortBy) {
+      filteredResults.sort((a: any, b: any) => {
+        switch (filters.sortBy) {
+          case 'Name':
+            return (a.name || '').localeCompare(b.name || '');
+          case 'Recent':
+            return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
+          case 'Favorites':
+            return (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0);
+          case 'Company':
+            return (a.company || '').localeCompare(b.company || '');
+          default:
+            return 0;
+        }
+      });
+    }
+
+    performanceCache.set(cacheKey, filteredResults);
+    performanceMonitor.end('search');
+    
+    return filteredResults;
+  }, [safeContacts]);
+
+  // Optimized debounced search
+  const debouncedSearchHandler = useMemo(
+    () => debounce((query: string) => {
+      setDebouncedSearch(query);
+    }, PERFORMANCE_CONFIG.SEARCH_DEBOUNCE_MS),
+    []
+  );
 
   const handleToggleFavorite = (id: string, isNowFavorite: boolean) => {
     toggleFavorite?.(id);
@@ -587,6 +592,7 @@ export default function HomeScreen() {
     setOpenSwipeId(contactId);
   };
 
+  // Optimized renderContact with better memoization
   const renderContact = useCallback(({ item, index }: { item: any; index: number }) => {
     return (
       <ContactListItem
@@ -594,29 +600,51 @@ export default function HomeScreen() {
           swipeRefs.current[item.id] = ref;
         }}
         contact={item}
-        onEdit={(id: string) => router.push({ pathname: '/edit-contact', params: { id } })}
+        onEdit={(id: string) => {
+          measureInteraction('edit_contact', () => {
+            router.push({ pathname: '/edit-contact', params: { id } });
+          });
+        }}
         onDelete={(id: string) => {
-          if (deleteContact) {
-            deleteContact(id);
-          }
+          measureInteraction('delete_contact', () => {
+            if (deleteContact) {
+              deleteContact(id);
+            }
+          });
         }}
         onToggleFavorite={(id: string) => {
-          if (toggleFavorite) {
-            toggleFavorite(id);
-          }
+          measureInteraction('toggle_favorite', () => {
+            if (toggleFavorite) {
+              toggleFavorite(id);
+            }
+          });
         }}
         onToggleVIP={(id: string) => {
-          if (toggleVIP) {
-            toggleVIP(id);
-          }
+          measureInteraction('toggle_vip', () => {
+            if (toggleVIP) {
+              toggleVIP(id);
+            }
+          });
         }}
         onPress={(contact: any) => {
-          router.push({ pathname: '/contact-details', params: { id: contact.id } });
+          measureInteraction('contact_press', () => {
+            router.push({ pathname: '/contact-details', params: { id: contact.id } });
+          });
         }}
         onSwipeOpen={handleSwipeOpen}
       />
     );
-  }, [deleteContact, toggleFavorite, toggleVIP, handleSwipeOpen, router]);
+  }, [deleteContact, toggleFavorite, toggleVIP, handleSwipeOpen, router, measureInteraction]);
+
+  // Optimized getItemLayout for better FlatList performance
+  const getItemLayout = useCallback((data: any, index: number) => ({
+    length: 100, // Fixed height for contact items
+    offset: 100 * index,
+    index,
+  }), []);
+
+  // Optimized keyExtractor
+  const keyExtractor = useCallback((item: any) => item.id, []);
 
   const renderEmptyState = useMemo(() => (
     <EmptyState>
@@ -1095,22 +1123,29 @@ export default function HomeScreen() {
           <FlatList
             data={filteredContacts}
             renderItem={renderContact}
-            keyExtractor={(item) => item.id}
+            keyExtractor={keyExtractor}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 100 }}
-            removeClippedSubviews={true}
-            maxToRenderPerBatch={5}
-            windowSize={5}
-            initialNumToRender={5}
-            updateCellsBatchingPeriod={50}
-            disableVirtualization={false}
-            getItemLayout={(data, index) => ({
-              length: 100,
-              offset: 100 * index,
-              index,
-            })}
+            getItemLayout={getItemLayout}
+            {...PERFORMANCE_CONFIG.FLATLIST_CONFIG}
             onEndReachedThreshold={0.5}
             onEndReached={() => {}}
+            // Additional performance optimizations
+            maintainVisibleContentPosition={{
+              minIndexForVisible: 0,
+              autoscrollToTopThreshold: 10,
+            }}
+            // Optimize scroll performance
+            scrollEventThrottle={16}
+            // Reduce memory usage
+            removeClippedSubviews={true}
+            // Optimize for large lists
+            maxToRenderPerBatch={10}
+            windowSize={10}
+            initialNumToRender={10}
+            updateCellsBatchingPeriod={100}
+            // Disable virtualization for better performance on smaller lists
+            disableVirtualization={filteredContacts.length < 50}
           />
         )}
       </ContactListContainer>

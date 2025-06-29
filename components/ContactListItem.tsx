@@ -4,6 +4,7 @@ import React, { forwardRef, useCallback, useImperativeHandle, useMemo } from 're
 import { Alert, Dimensions, StyleSheet, TouchableOpacity, Vibration, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Avatar, Chip, IconButton, Text, TouchableRipple, useTheme } from 'react-native-paper';
+import { usePerformance } from '../hooks/usePerformance';
 import {
   avatarSizes,
   badgeDimensions,
@@ -16,20 +17,21 @@ import {
 
 const { width } = Dimensions.get('window');
 
-const getInitials = (name: string) => {
+// Memoized utility functions
+const getInitials = React.useMemo(() => (name: string) => {
   return name
     .split(' ')
     .map(word => word.charAt(0))
     .join('')
     .toUpperCase()
     .slice(0, 2);
-};
+}, []);
 
-const getAvatarColor = (contact: any) => {
+const getAvatarColor = React.useMemo(() => (contact: any) => {
   const colors = ['#6200ee', '#03dac6', '#ff6b35', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3'];
   const index = contact.name.charCodeAt(0) % colors.length;
   return colors[index];
-};
+}, []);
 
 interface ContactListItemProps {
   contact: any;
@@ -79,6 +81,7 @@ const ContactListItem = React.memo(forwardRef<ContactListItemRef, ContactListIte
   ...props
 }, ref) => {
   const theme = useTheme();
+  const { measureInteraction } = usePerformance('ContactListItem');
   
   // Memoize expensive calculations
   const initials = useMemo(() => getInitials(contact.name), [contact.name]);
@@ -91,6 +94,34 @@ const ContactListItem = React.memo(forwardRef<ContactListItemRef, ContactListIte
     [contact.phoneNumbers]
   );
   
+  // Memoize contact subtitle
+  const contactSubtitle = useMemo(() => {
+    const parts = [];
+    
+    if (contact.company) {
+      parts.push(contact.company);
+    }
+    
+    if (contact.jobTitle) {
+      parts.push(contact.jobTitle);
+    }
+    
+    if (primaryPhone) {
+      parts.push(primaryPhone);
+    }
+    
+    return parts.join(' • ');
+  }, [contact.company, contact.jobTitle, primaryPhone]);
+
+  // Memoize contact info for better performance
+  const contactInfo = useMemo(() => ({
+    name: contact.name,
+    isVIP: contact.isVIP,
+    isFavorite: contact.isFavorite,
+    group: contact.group,
+    imageUri: contact.imageUri,
+  }), [contact.name, contact.isVIP, contact.isFavorite, contact.group, contact.imageUri]);
+  
   const swipeableRef = React.useRef<Swipeable>(null);
   
   useImperativeHandle(ref, () => ({
@@ -98,88 +129,95 @@ const ContactListItem = React.memo(forwardRef<ContactListItemRef, ContactListIte
       swipeableRef.current?.close();
     },
     closeImmediate: () => {
-      // Close immediately by calling close without any delay
       swipeableRef.current?.close();
     }
   }));
 
   const handleCall = useCallback(async () => {
     if (primaryPhone) {
-      // Enhanced haptic feedback for VIP contacts
-      if (contact.isVIP) {
-        Vibration.vibrate([0, 100, 50, 100, 50, 100]); // Special VIP pattern
-      } else {
-        Vibration.vibrate(50);
-      }
-      
-      try {
-        const canOpen = await Linking.canOpenURL(`tel:${primaryPhone}`);
-        if (canOpen) {
-          await Linking.openURL(`tel:${primaryPhone}`);
+      measureInteraction('call_contact', async () => {
+        // Enhanced haptic feedback for VIP contacts
+        if (contact.isVIP) {
+          Vibration.vibrate([0, 100, 50, 100, 50, 100]); // Special VIP pattern
         } else {
-          // Fallback: show alert with phone number
-          Alert.alert(
-            'Phone Dialer Not Available',
-            `Phone number: ${primaryPhone}\n\nThis device doesn't support phone calls or you're running in a simulator.`,
-            [
-              { text: 'Copy Number', onPress: () => Clipboard.setString(primaryPhone) },
-              { text: 'OK', style: 'cancel' }
-            ]
-          );
+          Vibration.vibrate(50);
         }
-      } catch (error) {
-        console.error('Error making phone call:', error);
-        Alert.alert('Error', 'Failed to make phone call. Please try again.');
-      }
+        
+        try {
+          const canOpen = await Linking.canOpenURL(`tel:${primaryPhone}`);
+          if (canOpen) {
+            await Linking.openURL(`tel:${primaryPhone}`);
+          } else {
+            // Fallback: show alert with phone number
+            Alert.alert(
+              'Phone Dialer Not Available',
+              `Phone number: ${primaryPhone}\n\nThis device doesn't support phone calls or you're running in a simulator.`,
+              [
+                { text: 'Copy Number', onPress: () => Clipboard.setString(primaryPhone) },
+                { text: 'OK', style: 'cancel' }
+              ]
+            );
+          }
+        } catch (error) {
+          console.error('Error making phone call:', error);
+          Alert.alert('Error', 'Failed to make phone call. Please try again.');
+        }
+      });
     } else {
       Alert.alert('No Phone Number', 'This contact doesn\'t have a phone number.');
     }
-  }, [primaryPhone, contact.isVIP]);
+  }, [primaryPhone, contact.isVIP, measureInteraction]);
 
   const handleMessage = useCallback(async () => {
     if (primaryPhone) {
-      Vibration.vibrate(30);
-      
-      try {
-        const canOpen = await Linking.canOpenURL(`sms:${primaryPhone}`);
-        if (canOpen) {
-          await Linking.openURL(`sms:${primaryPhone}`);
-        } else {
-          // Fallback: show alert with phone number
-          Alert.alert(
-            'SMS Not Available',
-            `Phone number: ${primaryPhone}\n\nThis device doesn't support SMS or you're running in a simulator.`,
-            [
-              { text: 'Copy Number', onPress: () => Clipboard.setString(primaryPhone) },
-              { text: 'OK', style: 'cancel' }
-            ]
-          );
+      measureInteraction('message_contact', async () => {
+        Vibration.vibrate(30);
+        
+        try {
+          const canOpen = await Linking.canOpenURL(`sms:${primaryPhone}`);
+          if (canOpen) {
+            await Linking.openURL(`sms:${primaryPhone}`);
+          } else {
+            // Fallback: show alert with phone number
+            Alert.alert(
+              'SMS Not Available',
+              `Phone number: ${primaryPhone}\n\nThis device doesn't support SMS or you're running in a simulator.`,
+              [
+                { text: 'Copy Number', onPress: () => Clipboard.setString(primaryPhone) },
+                { text: 'OK', style: 'cancel' }
+              ]
+            );
+          }
+        } catch (error) {
+          console.error('Error opening SMS:', error);
+          Alert.alert('Error', 'Failed to open SMS. Please try again.');
         }
-      } catch (error) {
-        console.error('Error opening SMS:', error);
-        Alert.alert('Error', 'Failed to open SMS. Please try again.');
-      }
+      });
     } else {
       Alert.alert('No Phone Number', 'This contact doesn\'t have a phone number.');
     }
-  }, [primaryPhone]);
+  }, [primaryPhone, measureInteraction]);
 
   const handleDelete = useCallback(() => {
-    Alert.alert(
-      'Delete Contact',
-      `Are you sure you want to delete ${contact.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => onDelete(contact.id) }
-      ]
-    );
-  }, [contact.name, contact.id, onDelete]);
+    measureInteraction('delete_contact', () => {
+      Alert.alert(
+        'Delete Contact',
+        `Are you sure you want to delete ${contact.name}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Delete', style: 'destructive', onPress: () => onDelete(contact.id) }
+        ]
+      );
+    });
+  }, [contact.name, contact.id, onDelete, measureInteraction]);
 
   const handleToggleVIP = useCallback((e: any) => {
     e.stopPropagation();
-    Vibration.vibrate(30);
-    onToggleVIP(contact.id);
-  }, [contact.id, onToggleVIP]);
+    measureInteraction('toggle_vip', () => {
+      Vibration.vibrate(30);
+      onToggleVIP(contact.id);
+    });
+  }, [contact.id, onToggleVIP, measureInteraction]);
 
   const handleSwipeOpen = useCallback(() => {
     if (onSwipeOpen) {
@@ -187,7 +225,8 @@ const ContactListItem = React.memo(forwardRef<ContactListItemRef, ContactListIte
     }
   }, [contact.id, onSwipeOpen]);
 
-  const renderRightActions = () => (
+  // Memoize right actions to prevent unnecessary re-renders
+  const renderRightActions = useMemo(() => () => (
     <View style={styles.swipeActionContainer}>
       {/* Call Action */}
       <TouchableOpacity 
@@ -223,25 +262,7 @@ const ContactListItem = React.memo(forwardRef<ContactListItemRef, ContactListIte
         </View>
       </TouchableOpacity>
     </View>
-  );
-
-  const getContactSubtitle = useMemo(() => {
-    const parts = [];
-    
-    if (contact.company) {
-      parts.push(contact.company);
-    }
-    
-    if (contact.jobTitle) {
-      parts.push(contact.jobTitle);
-    }
-    
-    if (primaryPhone) {
-      parts.push(primaryPhone);
-    }
-    
-    return parts.join(' • ');
-  }, [contact.company, contact.jobTitle, primaryPhone]);
+  ), [handleCall, handleMessage]);
 
   // Ensure we always return a valid element
   if (!contact) {
@@ -260,16 +281,16 @@ const ContactListItem = React.memo(forwardRef<ContactListItemRef, ContactListIte
     >
       <TouchableRipple onPress={() => onPress(contact)} rippleColor="rgba(0,0,0,0.1)">
         <View style={styles.contactContent}>
-          <View style={[styles.vipBorder, { borderColor: contact.isVIP ? '#FFD700' : 'transparent' }]} />
+          <View style={[styles.vipBorder, { borderColor: contactInfo.isVIP ? '#FFD700' : 'transparent' }]} />
           
           <View style={styles.avatarContainer}>
-            {contact.imageUri ? (
+            {contactInfo.imageUri ? (
               <Avatar.Image 
                 size={avatarSizes.large} 
-                source={{ uri: contact.imageUri }}
+                source={{ uri: contactInfo.imageUri }}
                 style={styles.avatarImage}
                 onError={(error) => {
-                  console.log('Avatar image error for contact:', contact.name, 'URI:', contact.imageUri, 'Error:', error);
+                  console.log('Avatar image error for contact:', contactInfo.name, 'URI:', contactInfo.imageUri, 'Error:', error);
                 }}
               />
             ) : (
@@ -277,15 +298,15 @@ const ContactListItem = React.memo(forwardRef<ContactListItemRef, ContactListIte
                 size={avatarSizes.large} 
                 label={initials}
                 color="white"
-                style={[styles.avatarText, { backgroundColor: contact.isVIP ? '#FFD700' : avatarColor }]}
+                style={[styles.avatarText, { backgroundColor: contactInfo.isVIP ? '#FFD700' : avatarColor }]}
               />
             )}
-            {contact.isFavorite && (
+            {contactInfo.isFavorite && (
               <View style={styles.favoriteBadge}>
                 <Text style={{ color: 'white', fontSize: fontSizes.xs }}>★</Text>
               </View>
             )}
-            {contact.isVIP && (
+            {contactInfo.isVIP && (
               <View style={styles.vipBadge}>
                 <Text style={{ color: 'white', fontSize: fontSizes.sm, fontWeight: 'bold' }}>👑</Text>
               </View>
@@ -293,13 +314,13 @@ const ContactListItem = React.memo(forwardRef<ContactListItemRef, ContactListIte
           </View>
           
           <View style={styles.contactInfo}>
-            <Text style={[styles.contactName, { color: contact.isVIP ? '#FFD700' : '#1a1a1a' }]}>
-              {contact.name}
-              {contact.isVIP && ' 👑'}
+            <Text style={[styles.contactName, { color: contactInfo.isVIP ? '#FFD700' : '#1a1a1a' }]}>
+              {contactInfo.name}
+              {contactInfo.isVIP && ' 👑'}
             </Text>
-            <Text style={styles.contactSubtitle}>{getContactSubtitle}</Text>
+            <Text style={styles.contactSubtitle}>{contactSubtitle}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.xs }}>
-              {contact.group && (
+              {contactInfo.group && (
                 <Chip 
                   style={{ 
                     height: chipDimensions.height, 
@@ -308,11 +329,11 @@ const ContactListItem = React.memo(forwardRef<ContactListItemRef, ContactListIte
                   textStyle={{ fontSize: fontSizes.xs }}
                 >
                   <Text style={{ fontSize: fontSizes.xs, color: 'black', fontWeight: '800' }}>
-                    {contact.group}
+                    {contactInfo.group}
                   </Text>
                 </Chip>
               )}
-              {contact.isVIP && (
+              {contactInfo.isVIP && (
                 <Chip 
                   style={{ 
                     height: chipDimensions.height, 
@@ -330,7 +351,7 @@ const ContactListItem = React.memo(forwardRef<ContactListItemRef, ContactListIte
           </View>
           
           <View style={styles.actionButtons}>
-            {contact.isVIP && (
+            {contactInfo.isVIP && (
               <IconButton
                 icon="crown"
                 iconColor="#FFD700"
@@ -338,7 +359,7 @@ const ContactListItem = React.memo(forwardRef<ContactListItemRef, ContactListIte
                 onPress={handleToggleVIP}
               />
             )}
-            {contact.isFavorite && (
+            {contactInfo.isFavorite && (
               <IconButton
                 icon="star"
                 iconColor="#ff6b35"

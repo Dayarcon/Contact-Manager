@@ -1,9 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useReducer, useState } from 'react';
 import AutoTaggingService from '../services/AutoTaggingService';
 import GeoLocationService from '../services/GeoLocationService';
 import ScheduledMessagingService from '../services/ScheduledMessagingService';
 import SmartRemindersService from '../services/SmartRemindersService';
+import { memoryOptimization, performanceMonitor } from '../utils/performance';
 import { useGoogleAuth } from './GoogleAuthContext';
 
 export interface InteractionHistoryItem {
@@ -77,7 +78,7 @@ interface ContactsContextType {
   toggleVIP: (id: string) => void;
   importContacts: (imported: Omit<Contact, 'id' | 'isFavorite' | 'isVIP' | 'createdAt' | 'updatedAt'>[]) => void;
   syncGoogleContacts: (forceSync?: boolean) => Promise<void>;
-  setContacts: React.Dispatch<React.SetStateAction<Contact[]>>;
+  setContacts: (contacts: Contact[]) => void;
   addHistoryEvent: (id: string, event: InteractionHistoryItem) => void;
   mergeContacts: (primaryId: string, secondaryId: string) => void;
   findDuplicates: () => { contact1: Contact; contact2: Contact; similarity: number; reason: string }[];
@@ -96,15 +97,115 @@ interface ContactsContextType {
   };
 }
 
+// Action types for reducer
+type ContactAction = 
+  | { type: 'SET_CONTACTS'; payload: Contact[] }
+  | { type: 'ADD_CONTACT'; payload: Contact }
+  | { type: 'UPDATE_CONTACT'; payload: { id: string; updates: Partial<Contact> } }
+  | { type: 'DELETE_CONTACT'; payload: string }
+  | { type: 'TOGGLE_FAVORITE'; payload: string }
+  | { type: 'TOGGLE_VIP'; payload: string }
+  | { type: 'ADD_HISTORY'; payload: { id: string; event: InteractionHistoryItem } }
+  | { type: 'MERGE_CONTACTS'; payload: { primaryId: string; secondaryId: string } }
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_SYNCING'; payload: boolean }
+  | { type: 'SET_LAST_SYNC'; payload: number };
+
+// Reducer for better state management
+const contactsReducer = (state: {
+  contacts: Contact[];
+  isLoading: boolean;
+  isSyncing: boolean;
+  lastSyncTimestamp: number | null;
+}, action: ContactAction) => {
+  switch (action.type) {
+    case 'SET_CONTACTS':
+      return { ...state, contacts: action.payload };
+    case 'ADD_CONTACT':
+      return { ...state, contacts: [...state.contacts, action.payload] };
+    case 'UPDATE_CONTACT':
+      return {
+        ...state,
+        contacts: state.contacts.map(contact =>
+          contact.id === action.payload.id
+            ? { ...contact, ...action.payload.updates, updatedAt: new Date().toISOString() }
+            : contact
+        )
+      };
+    case 'DELETE_CONTACT':
+      return {
+        ...state,
+        contacts: state.contacts.filter(contact => contact.id !== action.payload)
+      };
+    case 'TOGGLE_FAVORITE':
+      return {
+        ...state,
+        contacts: state.contacts.map(contact =>
+          contact.id === action.payload
+            ? { ...contact, isFavorite: !contact.isFavorite, updatedAt: new Date().toISOString() }
+            : contact
+        )
+      };
+    case 'TOGGLE_VIP':
+      return {
+        ...state,
+        contacts: state.contacts.map(contact =>
+          contact.id === action.payload
+            ? { ...contact, isVIP: !contact.isVIP, updatedAt: new Date().toISOString() }
+            : contact
+        )
+      };
+    case 'ADD_HISTORY':
+      return {
+        ...state,
+        contacts: state.contacts.map(contact =>
+          contact.id === action.payload.id
+            ? {
+                ...contact,
+                history: [...(contact.history || []), action.payload.event],
+                updatedAt: new Date().toISOString()
+              }
+            : contact
+        )
+      };
+    case 'MERGE_CONTACTS':
+      // Implementation for merge contacts
+      const { primaryId, secondaryId } = action.payload;
+      const primaryContact = state.contacts.find(c => c.id === primaryId);
+      const secondaryContact = state.contacts.find(c => c.id === secondaryId);
+      
+      if (!primaryContact || !secondaryContact) {
+        return state;
+      }
+      
+      // Merge logic would go here - for now just remove the secondary contact
+      return {
+        ...state,
+        contacts: state.contacts.filter(c => c.id !== secondaryId)
+      };
+    case 'SET_LOADING':
+      return { ...state, isLoading: action.payload };
+    case 'SET_SYNCING':
+      return { ...state, isSyncing: action.payload };
+    case 'SET_LAST_SYNC':
+      return { ...state, lastSyncTimestamp: action.payload };
+    default:
+      return state;
+  }
+};
+
 const ContactsContext = createContext<ContactsContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'contacts';
 
 export function ContactsProvider({ children }: { children: ReactNode }) {
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [lastSyncTimestamp, setLastSyncTimestamp] = useState<number | null>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [state, dispatch] = useReducer(contactsReducer, {
+    contacts: [],
+    isLoading: true,
+    isSyncing: false,
+    lastSyncTimestamp: null,
+  });
+
   const { isSignedIn, createGoogleContact, updateGoogleContact, deleteGoogleContact, getContacts } = useGoogleAuth();
 
   // Initialize automation services
@@ -113,9 +214,54 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
   const [messagingService] = useState(() => ScheduledMessagingService.getInstance());
   const [geoService] = useState(() => GeoLocationService.getInstance());
 
+  // Memoized selectors for better performance
+  const contacts = state.contacts;
+  const isLoading = state.isLoading;
+  const isSyncing = state.isSyncing;
+  const lastSyncTimestamp = state.lastSyncTimestamp;
+
+  // Optimized contact selectors
+  const favoriteContacts = useMemo(() => 
+    contacts.filter(contact => contact.isFavorite), 
+    [contacts]
+  );
+
+  const vipContacts = useMemo(() => 
+    contacts.filter(contact => contact.isVIP), 
+    [contacts]
+  );
+
+  const contactsByGroup = useMemo(() => {
+    const grouped = contacts.reduce((acc, contact) => {
+      const group = contact.group || 'Other';
+      if (!acc[group]) acc[group] = [];
+      acc[group].push(contact);
+      return acc;
+    }, {} as Record<string, Contact[]>);
+    return grouped;
+  }, [contacts]);
+
+  const recentContacts = useMemo(() => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    return contacts
+      .filter(contact => {
+        const lastInteraction = contact.history?.[contact.history.length - 1];
+        if (!lastInteraction) return false;
+        return new Date(lastInteraction.timestamp) > thirtyDaysAgo;
+      })
+      .sort((a, b) => {
+        const aLast = a.history?.[a.history.length - 1]?.timestamp || '';
+        const bLast = b.history?.[b.history.length - 1]?.timestamp || '';
+        return new Date(bLast).getTime() - new Date(aLast).getTime();
+      });
+  }, [contacts]);
+
   // Load contacts from AsyncStorage on mount
   useEffect(() => {
     const loadContacts = async () => {
+      performanceMonitor.start('load_contacts');
       try {
         const data = await AsyncStorage.getItem(STORAGE_KEY);
         const syncData = await AsyncStorage.getItem('lastSyncTimestamp');
@@ -124,27 +270,27 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
           const parsedContacts = JSON.parse(data);
           console.log('Loaded contacts from storage:', parsedContacts.length, 'contacts');
           
+          // Optimize contact data for better performance
+          const optimizedContacts = memoryOptimization.optimizeContactData(parsedContacts);
+          
           // Check for contacts with images
-          const contactsWithImages = parsedContacts.filter((c: Contact) => c.imageUri);
+          const contactsWithImages = optimizedContacts.filter((c: Contact) => c.imageUri);
           console.log('Contacts with images:', contactsWithImages.length);
-          contactsWithImages.forEach((c: Contact) => {
-            console.log('Contact with image:', c.name, 'URI:', c.imageUri);
-          });
           
           // Validate the parsed data to ensure it has the correct structure
-          if (Array.isArray(parsedContacts)) {
-            setContacts(parsedContacts);
+          if (Array.isArray(optimizedContacts)) {
+            dispatch({ type: 'SET_CONTACTS', payload: optimizedContacts });
           }
         }
         
         if (syncData) {
-          setLastSyncTimestamp(parseInt(syncData));
+          dispatch({ type: 'SET_LAST_SYNC', payload: parseInt(syncData) });
         }
       } catch (error) {
         console.error('Error loading contacts:', error);
-        // Keep using mock contacts if there's an error
       } finally {
-        setIsLoading(false);
+        dispatch({ type: 'SET_LOADING', payload: false });
+        performanceMonitor.end('load_contacts');
       }
     };
     
@@ -155,8 +301,10 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isLoading) {
       const timeoutId = setTimeout(() => {
+        performanceMonitor.start('save_contacts');
         try {
           AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(contacts));
+          performanceMonitor.end('save_contacts');
         } catch (error) {
           console.error('Error saving contacts:', error);
         }
@@ -181,7 +329,9 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
     }
   }, [lastSyncTimestamp]);
 
-  const addContact = async (contact: Omit<Contact, 'id' | 'isFavorite' | 'isVIP' | 'history' | 'createdAt' | 'updatedAt'>) => {
+  const addContact = useCallback(async (contact: Omit<Contact, 'id' | 'isFavorite' | 'isVIP' | 'history' | 'createdAt' | 'updatedAt'>) => {
+    performanceMonitor.start('add_contact');
+    
     const newContact: Contact = {
       ...contact,
       id: Date.now().toString(),
@@ -194,119 +344,126 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
 
     try {
       // Create contact in local storage
-      setContacts(prev => {
-        const updated = [...prev, newContact];
-        triggerAutomationFeatures(newContact);
-        return updated;
-      });
-
-      // If signed in to Google, create contact in Google
-      if (isSignedIn) {
-        const googleContact = await createGoogleContact(newContact);
-        // Store Google resource name for future updates
-        setContacts(prev => prev.map(c => 
-          c.id === newContact.id 
-            ? { ...c, googleResourceName: googleContact.resourceName }
-            : c
-        ));
+      dispatch({ type: 'ADD_CONTACT', payload: newContact });
+      
+      // Trigger automation features
+      triggerAutomationFeatures(newContact);
+      
+      // Create in Google Contacts if signed in
+      if (isSignedIn && createGoogleContact) {
+        try {
+          await createGoogleContact(newContact);
+        } catch (error) {
+          console.error('Error creating Google contact:', error);
+        }
       }
-    } catch (error: unknown) {
+      
+      performanceMonitor.end('add_contact');
+    } catch (error) {
       console.error('Error adding contact:', error);
+      performanceMonitor.end('add_contact');
     }
-  };
+  }, [isSignedIn, createGoogleContact]);
 
-  const editContact = async (id: string, updates: Partial<Contact>) => {
+  const editContact = useCallback(async (id: string, updates: Partial<Contact>) => {
+    performanceMonitor.start('edit_contact');
+    
     try {
-      console.log('Editing contact:', id, 'Updates:', updates);
+      // Update in local storage
+      dispatch({ type: 'UPDATE_CONTACT', payload: { id, updates } });
       
-      setContacts(prev => {
-        const updated = prev.map(contact => 
-          contact.id === id 
-            ? { ...contact, ...updates, updatedAt: new Date().toISOString() }
-            : contact
-        );
-        
-        // Log the updated contact to see if imageUri is preserved
-        const updatedContact = updated.find(c => c.id === id);
-        console.log('Updated contact:', updatedContact);
-        
-        // Trigger automation features for the updated contact
-        if (updatedContact) {
-          triggerAutomationFeatures(updatedContact);
-        }
-        
-        return updated;
-      });
-
-      // If signed in to Google and contact has Google resource name, update in Google
-      if (isSignedIn) {
-        const contact = contacts.find(c => c.id === id);
-        if (contact?.googleResourceName) {
-          await updateGoogleContact(contact.googleResourceName, { ...contact, ...updates });
+      // Update in Google Contacts if signed in
+      if (isSignedIn && updateGoogleContact) {
+        try {
+          const contact = contacts.find(c => c.id === id);
+          if (contact) {
+            await updateGoogleContact(contact.googleResourceName || '', { ...contact, ...updates });
+          }
+        } catch (error) {
+          console.error('Error updating Google contact:', error);
         }
       }
-    } catch (error: unknown) {
+      
+      performanceMonitor.end('edit_contact');
+    } catch (error) {
       console.error('Error editing contact:', error);
+      performanceMonitor.end('edit_contact');
     }
-  };
+  }, [contacts, isSignedIn, updateGoogleContact]);
 
-  const deleteContact = async (id: string) => {
+  const deleteContact = useCallback(async (id: string) => {
+    performanceMonitor.start('delete_contact');
+    
     try {
-      const contactToDelete = contacts.find(c => c.id === id);
-      
       // Delete from local storage
-      setContacts(prev => prev.filter(c => c.id !== id));
-
-      // If signed in to Google and contact has a Google resource name, delete from Google
-      if (isSignedIn && contactToDelete?.googleResourceName) {
-        await deleteGoogleContact(contactToDelete.googleResourceName);
+      dispatch({ type: 'DELETE_CONTACT', payload: id });
+      
+      // Delete from Google Contacts if signed in
+      if (isSignedIn && deleteGoogleContact) {
+        try {
+          await deleteGoogleContact(id);
+        } catch (error) {
+          console.error('Error deleting Google contact:', error);
+        }
       }
-    } catch (error: unknown) {
+      
+      performanceMonitor.end('delete_contact');
+    } catch (error) {
       console.error('Error deleting contact:', error);
+      performanceMonitor.end('delete_contact');
     }
-  };
+  }, [isSignedIn, deleteGoogleContact]);
 
-  const toggleFavorite = (id: string) => {
-    setContacts(prev => prev.map(c => (c.id === id ? { ...c, isFavorite: !c.isFavorite } : c)));
-  };
+  const toggleFavorite = useCallback((id: string) => {
+    dispatch({ type: 'TOGGLE_FAVORITE', payload: id });
+  }, []);
 
-  const toggleVIP = (id: string) => {
-    setContacts(prev => prev.map(c => (c.id === id ? { ...c, isVIP: !c.isVIP } : c)));
-  };
+  const toggleVIP = useCallback((id: string) => {
+    dispatch({ type: 'TOGGLE_VIP', payload: id });
+  }, []);
+
+  const addHistoryEvent = useCallback((id: string, event: InteractionHistoryItem) => {
+    dispatch({ type: 'ADD_HISTORY', payload: { id, event } });
+  }, []);
+
+  // Optimized search function
+  const searchContacts = useCallback((query: string) => {
+    if (!query.trim()) return contacts;
+    
+    const searchTerm = query.toLowerCase();
+    return contacts.filter(contact => {
+      // Name search (highest priority)
+      if (contact.name?.toLowerCase().includes(searchTerm)) return true;
+      
+      // Company search
+      if (contact.company?.toLowerCase().includes(searchTerm)) return true;
+      
+      // Phone search
+      if (contact.phoneNumbers?.some(phone => phone.number.includes(searchTerm))) return true;
+      
+      // Email search
+      if (contact.emailAddresses?.some(email => email.email.toLowerCase().includes(searchTerm))) return true;
+      
+      return false;
+    });
+  }, [contacts]);
 
   // Import contacts (e.g., from device)
-  const importContacts = (imported: Omit<Contact, 'id' | 'isFavorite' | 'isVIP' | 'createdAt' | 'updatedAt'>[]) => {
+  const importContacts = useCallback((imported: Omit<Contact, 'id' | 'isFavorite' | 'isVIP' | 'createdAt' | 'updatedAt'>[]) => {
     const now = new Date().toISOString();
-    setContacts(prev => [
-      ...imported.map(c => ({ 
-        ...c, 
-        id: Date.now().toString() + Math.random(), 
-        isFavorite: false,
-        isVIP: false,
-        createdAt: now,
-        updatedAt: now
-      })),
-      ...prev,
-    ]);
-  };
-
-  // Add a history event (e.g., call, meeting)
-  const addHistoryEvent = (id: string, event: InteractionHistoryItem) => {
-    setContacts(prev =>
-      prev.map(c =>
-        c.id === id
-          ? { 
-              ...c, 
-              history: [event, ...(c.history || [])],
-              updatedAt: new Date().toISOString()
-            }
-          : c
-      )
-    );
-  };
+    const newContacts = imported.map(c => ({ 
+      ...c, 
+      id: Date.now().toString() + Math.random(), 
+      isFavorite: false,
+      isVIP: false,
+      createdAt: now,
+      updatedAt: now
+    }));
+    dispatch({ type: 'SET_CONTACTS', payload: [...newContacts, ...contacts] });
+  }, [contacts]);
 
   // Merge two contacts
-  const mergeContacts = (contact1Id: string, contact2Id: string): Contact => {
+  const mergeContacts = useCallback((contact1Id: string, contact2Id: string): Contact => {
     const contact1 = contacts.find(c => c.id === contact1Id);
     const contact2 = contacts.find(c => c.id === contact2Id);
     
@@ -382,12 +539,12 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
       c.id === contact1Id ? mergedContact : c
     );
     
-    setContacts(finalContacts);
+    dispatch({ type: 'SET_CONTACTS', payload: finalContacts });
     return mergedContact;
-  };
+  }, [contacts]);
 
   // Find duplicate contacts
-  const findDuplicates = (): { contact1: Contact; contact2: Contact; similarity: number; reason: string }[] => {
+  const findDuplicates = useCallback((): { contact1: Contact; contact2: Contact; similarity: number; reason: string }[] => {
     const duplicates: { contact1: Contact; contact2: Contact; similarity: number; reason: string }[] = [];
     
     for (let i = 0; i < contacts.length; i++) {
@@ -457,10 +614,10 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
     }
     
     return duplicates.sort((a, b) => b.similarity - a.similarity);
-  };
+  }, [contacts]);
 
   // Get contact statistics
-  const getContactStats = () => {
+  const getContactStats = useCallback(() => {
     const groups = contacts.reduce((acc, contact) => {
       acc[contact.group] = (acc[contact.group] || 0) + 1;
       return acc;
@@ -480,236 +637,147 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
       groups,
       recent
     };
-  };
-
-  // Helper function to sort contacts alphabetically by name
-  const sortContactsAlphabetically = (contacts: Contact[]) => {
-    return contacts.sort((a, b) => {
-      const nameA = (a.name || '').toLowerCase();
-      const nameB = (b.name || '').toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-  };
-
-  // Search contacts
-  const searchContacts = (query: string) => {
-    const lowerQuery = query.toLowerCase();
-    const filtered = contacts.filter(contact =>
-      contact.name.toLowerCase().includes(lowerQuery) ||
-      contact.firstName?.toLowerCase().includes(lowerQuery) ||
-      contact.lastName?.toLowerCase().includes(lowerQuery) ||
-      contact.company?.toLowerCase().includes(lowerQuery) ||
-      contact.jobTitle?.toLowerCase().includes(lowerQuery) ||
-      (contact.phoneNumbers || []).some(p => p.number.includes(query)) ||
-      (contact.emailAddresses || []).some(e => e.email.toLowerCase().includes(lowerQuery)) ||
-      contact.notes?.toLowerCase().includes(lowerQuery)
-    );
-    return sortContactsAlphabetically(filtered);
-  };
-
-  // Get contacts by group
-  const getContactsByGroup = (group: string) => {
-    const filtered = contacts.filter(c => c.group === group);
-    return sortContactsAlphabetically(filtered);
-  };
-
-  // Get favorite contacts
-  const getFavoriteContacts = () => {
-    const filtered = contacts.filter(c => c.isFavorite);
-    return sortContactsAlphabetically(filtered);
-  };
-
-  // Get VIP contacts
-  const getVIPContacts = () => {
-    const filtered = contacts.filter(c => c.isVIP);
-    return sortContactsAlphabetically(filtered);
-  };
-
-  // Get recent contacts
-  const getRecentContacts = (days: number = 30) => {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - days);
-    const filtered = contacts.filter(c => new Date(c.updatedAt) > cutoff);
-    return sortContactsAlphabetically(filtered);
-  };
+  }, [contacts]);
 
   // Automation features integration
-  const triggerAutomationFeatures = async (contact: Contact) => {
+  const triggerAutomationFeatures = useCallback(async (contact: Contact) => {
     try {
       // Auto-tagging
-      await taggingService.autoTagContact(contact);
-      
-      // Smart reminders for birthdays and anniversaries
-      await remindersService.generateRemindersFromContacts([contact]);
-      
-      // Scheduled messaging for birthdays and anniversaries
-      await messagingService.generateMessagesFromContacts([contact]);
-      
-      // Location tracking
-      if (geoService.getCurrentLocation()) {
-        await geoService.addGeoContact(contact, geoService.getCurrentLocation()!);
+      const tags = await taggingService.autoTagContact(contact);
+      if (tags.length > 0) {
+        // Convert tags to strings safely
+        const tagStrings = tags.map(tag => String(tag));
+        dispatch({ 
+          type: 'UPDATE_CONTACT', 
+          payload: { 
+            id: contact.id, 
+            updates: { labels: [...(contact.labels || []), ...tagStrings] } 
+          } 
+        });
+      }
+
+      // Smart reminders
+      const reminders = await remindersService.getReminders();
+      console.log('Generated reminders:', reminders);
+
+      // Location-based features
+      if (contact.address) {
+        const locationData = await geoService.getCurrentLocation();
+        if (locationData) {
+          dispatch({ 
+            type: 'UPDATE_CONTACT', 
+            payload: { 
+              id: contact.id, 
+              updates: { 
+                history: [...(contact.history || []), {
+                  id: Date.now().toString(),
+                  type: 'visit',
+                  location: locationData,
+                  timestamp: new Date().toISOString(),
+                  source: 'auto'
+                }] 
+              } 
+            } 
+          });
+        }
       }
     } catch (error) {
       console.error('Error triggering automation features:', error);
     }
-  };
+  }, [taggingService, remindersService, geoService]);
 
-  // Batch automation for all contacts
-  const runBatchAutomation = async () => {
+  const runBatchAutomation = useCallback(async () => {
     try {
-      // Generate reminders for all contacts
-      await remindersService.generateRemindersFromContacts(contacts);
+      dispatch({ type: 'SET_SYNCING', payload: true });
       
-      // Auto-tag all contacts
-      for (const contact of contacts) {
-        const suggestedTags = await taggingService.autoTagContact(contact);
-        if (suggestedTags.length > 0) {
-          const updatedLabels = [...(contact.labels || []), ...suggestedTags];
-          editContact(contact.id, { labels: updatedLabels });
-        }
+      // Process contacts in batches for better performance
+      const batchSize = 10;
+      for (let i = 0; i < contacts.length; i += batchSize) {
+        const batch = contacts.slice(i, i + batchSize);
+        await Promise.all(batch.map(contact => triggerAutomationFeatures(contact)));
+        
+        // Small delay to prevent blocking the UI
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     } catch (error) {
       console.error('Error running batch automation:', error);
+    } finally {
+      dispatch({ type: 'SET_SYNCING', payload: false });
     }
-  };
+  }, [contacts, triggerAutomationFeatures]);
 
-  // Get automation services for use in components
-  const getAutomationServices = () => ({
+  const getAutomationServices = useCallback(() => ({
     remindersService,
     taggingService,
     messagingService,
-    geoService
-  });
+    geoService,
+  }), [remindersService, taggingService, messagingService, geoService]);
 
-  // Sync Google Contacts
-  const syncGoogleContacts = async (forceSync: boolean = false) => {
+  // Google Contacts sync
+  const syncGoogleContacts = useCallback(async (forceSync: boolean = false) => {
+    if (!isSignedIn || !getContacts) {
+      console.log('Not signed in to Google or getContacts not available');
+      return;
+    }
+
     try {
-      if (!isSignedIn) {
-        throw new Error('Not signed in to Google');
-      }
-
-      // Prevent multiple simultaneous syncs
-      if (isSyncing) {
-        console.log('Sync already in progress, skipping...');
-        return;
-      }
-
-      // Check if sync is needed (unless forced)
-      if (!forceSync && lastSyncTimestamp) {
-        const timeSinceLastSync = Date.now() - lastSyncTimestamp;
-        const syncCooldown = 5 * 60 * 1000; // 5 minutes cooldown
-        
-        if (timeSinceLastSync < syncCooldown) {
-          console.log('Sync skipped - too soon since last sync');
-          return;
-        }
-      }
-
-      // Check if we already have Google contacts in local storage
-      const existingGoogleContacts = contacts.filter(c => c.googleResourceName);
-      const hasGoogleContacts = existingGoogleContacts.length > 0;
-
-      // If we have Google contacts and this isn't a force sync, check if we really need to sync
-      if (hasGoogleContacts && !forceSync) {
-        console.log(`Found ${existingGoogleContacts.length} existing Google contacts, checking if sync is needed...`);
-        
-        // Only sync if it's been more than 30 minutes since last sync
-        if (lastSyncTimestamp && (Date.now() - lastSyncTimestamp) < (30 * 60 * 1000)) {
-          console.log('Google contacts are recent, skipping sync');
-          return;
-        }
-      }
-
-      setIsSyncing(true);
-      console.log('Starting Google contacts sync...');
-
-      const startTime = Date.now();
+      dispatch({ type: 'SET_SYNCING', payload: true });
       
-      // Create a map for faster lookups
-      const existingGoogleResourceNames = new Set(
-        contacts
-          .filter(c => c.googleResourceName)
-          .map(c => c.googleResourceName)
-      );
+      const googleContacts = await getContacts();
+      console.log('Fetched Google contacts:', googleContacts.length);
 
-      // Create a map of existing contacts for faster updates
-      const existingContactsMap = new Map(
-        contacts.map(contact => [contact.googleResourceName, contact])
-      );
-
-      let processedCount = 0;
-      let newContactsCount = 0;
-      let updatedCount = 0;
-
-      // Process contacts progressively as they come in
+      // Process Google contacts
       const onContactProcessed = (googleContact: Contact) => {
-        processedCount++;
-        
-        if (existingContactsMap.has(googleContact.googleResourceName)) {
+        // Check if contact already exists
+        const existingContact = contacts.find(c => 
+          c.googleResourceName === googleContact.googleResourceName ||
+          c.emailAddresses?.some(e => 
+            googleContact.emailAddresses?.some(ge => ge.email === e.email)
+          )
+        );
+
+        if (existingContact) {
           // Update existing contact
-          const existingContact = existingContactsMap.get(googleContact.googleResourceName)!;
-          const shouldBeFavorite = googleContact.isFavorite !== existingContact.isFavorite;
-          const shouldBeVIP = googleContact.isVIP !== existingContact.isVIP;
-          
-          if (shouldBeFavorite || shouldBeVIP) {
-            updatedCount++;
-            const updatedContact = {
-              ...existingContact,
-              isFavorite: googleContact.isFavorite,
-              isVIP: googleContact.isVIP,
-              updatedAt: new Date().toISOString()
-            };
-            
-            // Update the contact in the map
-            existingContactsMap.set(googleContact.googleResourceName, updatedContact);
-            
-            // Update the UI immediately
-            setContacts(prev => 
-              prev.map(c => 
-                c.googleResourceName === googleContact.googleResourceName ? updatedContact : c
-              )
-            );
-          }
+          dispatch({ 
+            type: 'UPDATE_CONTACT', 
+            payload: { 
+              id: existingContact.id, 
+              updates: { 
+                ...googleContact,
+                id: existingContact.id, // Preserve local ID
+                isFavorite: existingContact.isFavorite, // Preserve local flags
+                isVIP: existingContact.isVIP,
+                history: existingContact.history, // Preserve local history
+                createdAt: existingContact.createdAt, // Preserve creation date
+              } 
+            } 
+          });
         } else {
           // Add new contact
-          newContactsCount++;
-          
-          // Add to the map
-          existingContactsMap.set(googleContact.googleResourceName, googleContact);
-          
-          // Add to UI immediately
-          setContacts(prev => [...prev, googleContact]);
+          dispatch({ type: 'ADD_CONTACT', payload: googleContact });
         }
       };
 
-      // Call getContacts with the callback for progressive loading
-      const googleContacts = await (getContacts as any)(onContactProcessed);
-      const fetchTime = Date.now() - startTime;
-      console.log(`Fetched and processed ${googleContacts.length} contacts from Google in ${fetchTime}ms`);
-
-      const processTime = Date.now() - startTime;
-
-      if (newContactsCount > 0) {
-        console.log(`✅ Imported ${newContactsCount} new contacts from Google in ${processTime}ms`);
-      } else if (updatedCount > 0) {
-        console.log(`✅ Updated ${updatedCount} existing contacts with new favorite/VIP status in ${processTime}ms`);
-      } else {
-        console.log(`✅ No changes needed - sync completed in ${processTime}ms`);
+      // Process contacts in batches
+      const batchSize = 20;
+      for (let i = 0; i < googleContacts.length; i += batchSize) {
+        const batch = googleContacts.slice(i, i + batchSize);
+        batch.forEach(onContactProcessed);
+        
+        // Small delay to prevent blocking the UI
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      // Update sync timestamp
-      setLastSyncTimestamp(Date.now());
-      
+      dispatch({ type: 'SET_LAST_SYNC', payload: Date.now() });
+      console.log('Google contacts sync completed');
     } catch (error) {
       console.error('Error syncing Google contacts:', error);
-      throw error;
     } finally {
-      setIsSyncing(false);
+      dispatch({ type: 'SET_SYNCING', payload: false });
     }
-  };
+  }, [isSignedIn, getContacts, contacts]);
 
-  // Create the context value with all functions properly defined
-  const contextValue: ContactsContextType = {
+  const contextValue = useMemo(() => ({
     contacts,
     isLoading,
     isSyncing,
@@ -721,19 +789,42 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
     toggleVIP,
     importContacts,
     syncGoogleContacts,
-    setContacts,
+    setContacts: (contacts: Contact[]) => dispatch({ type: 'SET_CONTACTS', payload: contacts }),
     addHistoryEvent,
     mergeContacts,
     findDuplicates,
     getContactStats,
     searchContacts,
-    getContactsByGroup,
-    getFavoriteContacts,
-    getVIPContacts,
-    getRecentContacts,
+    getContactsByGroup: (group: string) => contactsByGroup[group] || [],
+    getFavoriteContacts: () => favoriteContacts,
+    getVIPContacts: () => vipContacts,
+    getRecentContacts: (days: number = 30) => recentContacts,
     runBatchAutomation,
-    getAutomationServices
-  };
+    getAutomationServices,
+  }), [
+    contacts,
+    isLoading,
+    isSyncing,
+    lastSyncTimestamp,
+    addContact,
+    editContact,
+    deleteContact,
+    toggleFavorite,
+    toggleVIP,
+    importContacts,
+    syncGoogleContacts,
+    addHistoryEvent,
+    mergeContacts,
+    findDuplicates,
+    getContactStats,
+    searchContacts,
+    contactsByGroup,
+    favoriteContacts,
+    vipContacts,
+    recentContacts,
+    runBatchAutomation,
+    getAutomationServices,
+  ]);
 
   return (
     <ContactsContext.Provider value={contextValue}>
@@ -744,39 +835,8 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
 
 export function useContacts() {
   const context = useContext(ContactsContext);
-  if (!context) {
-    console.error('useContacts must be used within a ContactsProvider');
-    // Return a safe fallback context to prevent crashes
-    return {
-      contacts: [],
-      isLoading: true,
-      isSyncing: false,
-      lastSyncTimestamp: null,
-      addContact: () => console.warn('ContactsProvider not available'),
-      editContact: () => console.warn('ContactsProvider not available'),
-      deleteContact: () => console.warn('ContactsProvider not available'),
-      toggleFavorite: () => console.warn('ContactsProvider not available'),
-      toggleVIP: () => console.warn('ContactsProvider not available'),
-      importContacts: () => console.warn('ContactsProvider not available'),
-      syncGoogleContacts: () => Promise.resolve(),
-      setContacts: () => console.warn('ContactsProvider not available'),
-      addHistoryEvent: () => console.warn('ContactsProvider not available'),
-      mergeContacts: () => console.warn('ContactsProvider not available'),
-      findDuplicates: () => [],
-      getContactStats: () => ({ total: 0, favorites: 0, vip: 0, groups: {}, recent: 0 }),
-      searchContacts: () => [],
-      getContactsByGroup: () => [],
-      getFavoriteContacts: () => [],
-      getVIPContacts: () => [],
-      getRecentContacts: () => [],
-      runBatchAutomation: () => Promise.resolve(),
-      getAutomationServices: () => ({
-        remindersService: {} as SmartRemindersService,
-        taggingService: {} as AutoTaggingService,
-        messagingService: {} as ScheduledMessagingService,
-        geoService: {} as GeoLocationService
-      })
-    };
+  if (context === undefined) {
+    throw new Error('useContacts must be used within a ContactsProvider');
   }
   return context;
 } 
