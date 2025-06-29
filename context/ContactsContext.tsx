@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useReducer, useState } from 'react';
 import AutoTaggingService from '../services/AutoTaggingService';
+import ContactSyncService from '../services/ContactSyncService';
 import GeoLocationService from '../services/GeoLocationService';
 import ScheduledMessagingService from '../services/ScheduledMessagingService';
 import SmartRemindersService from '../services/SmartRemindersService';
@@ -213,6 +214,7 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
   const [taggingService] = useState(() => AutoTaggingService.getInstance());
   const [messagingService] = useState(() => ScheduledMessagingService.getInstance());
   const [geoService] = useState(() => GeoLocationService.getInstance());
+  const [contactSyncService] = useState(() => ContactSyncService.getInstance());
 
   // Memoized selectors for better performance
   const contacts = state.contacts;
@@ -329,6 +331,51 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
     }
   }, [lastSyncTimestamp]);
 
+  // Background sync effect - runs periodically to ensure all contacts are synced
+  useEffect(() => {
+    if (isLoading || contacts.length === 0) return;
+
+    const performBackgroundSync = async () => {
+      try {
+        // Check if auto-sync is enabled
+        const settings = contactSyncService.getSettings();
+        if (!settings.autoSync) return;
+
+        // Check permissions
+        const hasPermission = await contactSyncService.checkPermissions();
+        if (!hasPermission) return;
+
+        console.log('🔄 Performing background sync...');
+        
+        // Sync all contacts to system
+        const result = await contactSyncService.syncAllToSystem(contacts);
+        
+        if (result.success) {
+          console.log(`✅ Background sync completed: ${result.syncedCount} contacts synced`);
+          dispatch({ type: 'SET_LAST_SYNC', payload: Date.now() });
+        } else {
+          console.log(`⚠️ Background sync completed with errors: ${result.failedCount} failed`);
+        }
+      } catch (error) {
+        console.log('Background sync failed (non-critical):', error);
+      }
+    };
+
+    // Run initial sync after a delay
+    const initialSyncTimeout = setTimeout(performBackgroundSync, 5000);
+
+    // Set up periodic sync (every 30 minutes)
+    const periodicSyncInterval = setInterval(performBackgroundSync, 30 * 60 * 1000);
+
+    return () => {
+      clearTimeout(initialSyncTimeout);
+      clearInterval(periodicSyncInterval);
+    };
+  }, [contacts, isLoading, contactSyncService]);
+
+  // Show sync notification on first contact add
+  const [hasShownSyncNotification, setHasShownSyncNotification] = useState(false);
+
   const addContact = useCallback(async (contact: Omit<Contact, 'id' | 'isFavorite' | 'isVIP' | 'history' | 'createdAt' | 'updatedAt'>) => {
     performanceMonitor.start('add_contact');
     
@@ -349,6 +396,20 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
       // Trigger automation features
       triggerAutomationFeatures(newContact);
       
+      // Auto-sync to system contacts (background)
+      try {
+        await contactSyncService.autoSyncContact(newContact, 'add');
+        
+        // Show sync notification on first contact (if not shown before)
+        if (!hasShownSyncNotification) {
+          setHasShownSyncNotification(true);
+          // Note: In a real app, you'd show a toast notification here
+          console.log('🎉 Contact automatically synced to system contacts! Available in WhatsApp, SMS, and other apps.');
+        }
+      } catch (syncError) {
+        console.log('Background sync failed (non-critical):', syncError);
+      }
+      
       // Create in Google Contacts if signed in
       if (isSignedIn && createGoogleContact) {
         try {
@@ -363,7 +424,7 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
       console.error('Error adding contact:', error);
       performanceMonitor.end('add_contact');
     }
-  }, [isSignedIn, createGoogleContact]);
+  }, [isSignedIn, createGoogleContact, contactSyncService, hasShownSyncNotification]);
 
   const editContact = useCallback(async (id: string, updates: Partial<Contact>) => {
     performanceMonitor.start('edit_contact');
@@ -371,6 +432,17 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
     try {
       // Update in local storage
       dispatch({ type: 'UPDATE_CONTACT', payload: { id, updates } });
+      
+      // Get the updated contact for sync
+      const updatedContact = contacts.find(c => c.id === id);
+      if (updatedContact) {
+        // Auto-sync to system contacts (background)
+        try {
+          await contactSyncService.autoSyncContact(updatedContact, 'update');
+        } catch (syncError) {
+          console.log('Background sync failed (non-critical):', syncError);
+        }
+      }
       
       // Update in Google Contacts if signed in
       if (isSignedIn && updateGoogleContact) {
@@ -389,14 +461,26 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
       console.error('Error editing contact:', error);
       performanceMonitor.end('edit_contact');
     }
-  }, [contacts, isSignedIn, updateGoogleContact]);
+  }, [contacts, isSignedIn, updateGoogleContact, contactSyncService]);
 
   const deleteContact = useCallback(async (id: string) => {
     performanceMonitor.start('delete_contact');
     
     try {
+      // Get the contact before deleting for sync
+      const contactToDelete = contacts.find(c => c.id === id);
+      
       // Delete from local storage
       dispatch({ type: 'DELETE_CONTACT', payload: id });
+      
+      // Auto-sync to system contacts (background)
+      if (contactToDelete) {
+        try {
+          await contactSyncService.autoSyncContact(contactToDelete, 'delete');
+        } catch (syncError) {
+          console.log('Background sync failed (non-critical):', syncError);
+        }
+      }
       
       // Delete from Google Contacts if signed in
       if (isSignedIn && deleteGoogleContact) {
@@ -412,7 +496,7 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
       console.error('Error deleting contact:', error);
       performanceMonitor.end('delete_contact');
     }
-  }, [isSignedIn, deleteGoogleContact]);
+  }, [contacts, isSignedIn, deleteGoogleContact, contactSyncService]);
 
   const toggleFavorite = useCallback((id: string) => {
     dispatch({ type: 'TOGGLE_FAVORITE', payload: id });
@@ -449,7 +533,7 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
   }, [contacts]);
 
   // Import contacts (e.g., from device)
-  const importContacts = useCallback((imported: Omit<Contact, 'id' | 'isFavorite' | 'isVIP' | 'createdAt' | 'updatedAt'>[]) => {
+  const importContacts = useCallback(async (imported: Omit<Contact, 'id' | 'isFavorite' | 'isVIP' | 'createdAt' | 'updatedAt'>[]) => {
     const now = new Date().toISOString();
     const newContacts = imported.map(c => ({ 
       ...c, 
@@ -459,8 +543,18 @@ export function ContactsProvider({ children }: { children: ReactNode }) {
       createdAt: now,
       updatedAt: now
     }));
+    
     dispatch({ type: 'SET_CONTACTS', payload: [...newContacts, ...contacts] });
-  }, [contacts]);
+    
+    // Auto-sync imported contacts to system contacts (background)
+    try {
+      for (const contact of newContacts) {
+        await contactSyncService.autoSyncContact(contact, 'add');
+      }
+    } catch (syncError) {
+      console.log('Background sync of imported contacts failed (non-critical):', syncError);
+    }
+  }, [contacts, contactSyncService]);
 
   // Merge two contacts
   const mergeContacts = useCallback((contact1Id: string, contact2Id: string): Contact => {

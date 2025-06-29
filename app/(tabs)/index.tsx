@@ -489,8 +489,9 @@ export default function HomeScreen() {
 
     // Sort contacts alphabetically by name
     return contacts.sort((a: any, b: any) => {
-      const nameA = (a.name || '').toLowerCase();
-      const nameB = (b.name || '').toLowerCase();
+      const safeName = (name: any) => typeof name === 'string' ? name : '';
+      const nameA = safeName(a.name).toLowerCase();
+      const nameB = safeName(b.name).toLowerCase();
       return nameA.localeCompare(nameB);
     });
   }, [safeContacts, showFavorites, showVIP, showFamily, showFriends, selectedGroup, selectedLabel, showEmergency, showRecent, debouncedSearch, searchFilters, getFavoriteContacts, getVIPContacts, getContactsByGroup, getRecentContacts]);
@@ -522,15 +523,16 @@ export default function HomeScreen() {
     // Sort results
     if (filters.sortBy) {
       filteredResults.sort((a: any, b: any) => {
+        const safeName = (name: any) => typeof name === 'string' ? name : '';
         switch (filters.sortBy) {
           case 'Name':
-            return (a.name || '').localeCompare(b.name || '');
+            return safeName(a.name).localeCompare(safeName(b.name));
           case 'Recent':
             return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
           case 'Favorites':
             return (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0);
           case 'Company':
-            return (a.company || '').localeCompare(b.company || '');
+            return safeName(a.company).localeCompare(safeName(b.company));
           default:
             return 0;
         }
